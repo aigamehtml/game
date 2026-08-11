@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的游戏网站</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #fff;
+      overflow: hidden;
+    }
+    .card {
+      text-align: center;
+      padding: 3rem 4rem;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      animation: float 4s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      padding: 0.3rem 1rem;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #e94560, #ff6b6b);
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-size: 2.6rem;
+      margin-bottom: 0.8rem;
+      background: linear-gradient(90deg, #fff, #ffd369);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p { color: #c9d1e0; font-size: 1.05rem; line-height: 1.7; }
+    .btn {
+      display: inline-block;
+      margin-top: 2rem;
+      padding: 0.8rem 2.2rem;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #e94560, #ff6b6b);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(233, 69, 96, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">GAME ZONE</span>
+    <h1>欢迎来到我的游戏网站</h1>
+    <p>在这里，开启你的冒险之旅。</p>
+    <a class="btn" href="#">开始游戏</a>
+  </div>
+</body>
+</html>
