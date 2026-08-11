@@ -15,10 +15,12 @@
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
       color: #fff;
       overflow: hidden;
+      padding: 1.5rem;
     }
     .card {
       text-align: center;
-      padding: 3rem 4rem;
+      max-width: 640px;
+      padding: 3rem 3.4rem;
       border-radius: 24px;
       background: rgba(255, 255, 255, 0.06);
       backdrop-filter: blur(12px);
@@ -41,16 +43,20 @@
     }
     h1 {
       font-size: 2.6rem;
-      margin-bottom: 0.8rem;
+      margin-bottom: 1rem;
       background: linear-gradient(90deg, #fff, #ffd369);
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    p { color: #c9d1e0; font-size: 1.05rem; line-height: 1.7; }
+    .intro {
+      color: #c9d1e0;
+      font-size: 1.05rem;
+      line-height: 1.8;
+      margin-bottom: 2rem;
+    }
     .btn {
       display: inline-block;
-      margin-top: 2rem;
       padding: 0.8rem 2.2rem;
       border-radius: 999px;
       background: linear-gradient(90deg, #e94560, #ff6b6b);
@@ -63,14 +69,48 @@
       transform: translateY(-3px);
       box-shadow: 0 10px 30px rgba(233, 69, 96, 0.5);
     }
+    .links {
+      margin-top: 2.4rem;
+      padding-top: 1.6rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 0.92rem;
+      color: #aab4c8;
+      line-height: 1.9;
+      text-align: left;
+    }
+    .links .label {
+      color: #8fa0bd;
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+    .links a {
+      color: #ffd369;
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(255, 211, 105, 0.5);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .links a:hover {
+      color: #fff;
+      border-bottom-color: #fff;
+    }
   </style>
 </head>
 <body>
   <div class="card">
     <span class="badge">GAME ZONE</span>
     <h1>欢迎来到我的游戏网站</h1>
-    <p>在这里，开启你的冒险之旅。</p>
+    <p class="intro">这里是我用 AI 开发的小游戏合集。挑一个，点开就能直接试玩，无需下载安装。</p>
     <a class="btn" href="games.html">进入游戏列表</a>
+
+    <div class="links">
+      <span class="label">想看源码 / 拿备份</span>
+      访问 <a href="https://github.com/aigamehtml/game" target="_blank" rel="noopener">GitHub 仓库</a>
+      或 <a href="https://pan.quark.cn/s/cf681db53063" target="_blank" rel="noopener">夸克网盘</a>。<br>
+      <span class="label">想了解开发过程</span>
+      关注微信公众号 <a href="https://mp.weixin.qq.com/s/RVaZ5gvJdHcA42_R1DUESw" target="_blank" rel="noopener">边玩边赚日记</a>。
+    </div>
   </div>
 </body>
 </html>
