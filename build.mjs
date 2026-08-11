@@ -5,9 +5,19 @@ const ROOT = process.cwd();
 // 这些文件不列为游戏：首页、本生成页、模板
 const SKIP = new Set(['index.html', 'games.html', 'template.html']);
 
-const files = readdirSync(ROOT)
-  .filter((f) => f.toLowerCase().endsWith('.html') && !SKIP.has(f))
-  .sort((a, b) => a.localeCompare(b, 'zh'));
+console.log(`[build] 工作目录: ${ROOT}`);
+console.log(`[build] node: ${process.version}`);
+
+let files;
+try {
+  files = readdirSync(ROOT)
+    .filter((f) => f.toLowerCase().endsWith('.html') && !SKIP.has(f))
+    .sort((a, b) => a.localeCompare(b, 'zh'));
+} catch (err) {
+  console.error('[build] 读取目录失败:', err);
+  process.exit(1);
+}
+console.log(`[build] 扫描到 ${files.length} 个游戏页面:`, files.join(', ') || '(空)');
 
 function getTitle(file) {
   try {
@@ -73,5 +83,10 @@ const page = `<!DOCTYPE html>
 </html>
 `;
 
-writeFileSync(join(ROOT, 'games.html'), page, 'utf8');
+try {
+  writeFileSync(join(ROOT, 'games.html'), page, 'utf8');
+} catch (err) {
+  console.error('[build] 写入 games.html 失败:', err);
+  process.exit(1);
+}
 console.log(`✅ 生成 games.html，共 ${items.length} 个游戏页面`);
