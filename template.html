@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>我的游戏网站</title>
+  <title>页面标题</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -24,11 +24,7 @@
       backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.12);
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-      animation: float 4s ease-in-out infinite;
-    }
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-12px); }
+      max-width: 640px;
     }
     .badge {
       display: inline-block;
@@ -40,7 +36,7 @@
       margin-bottom: 1.5rem;
     }
     h1 {
-      font-size: 2.6rem;
+      font-size: 2.4rem;
       margin-bottom: 0.8rem;
       background: linear-gradient(90deg, #fff, #ffd369);
       -webkit-background-clip: text;
@@ -67,10 +63,10 @@
 </head>
 <body>
   <div class="card">
-    <span class="badge">GAME ZONE</span>
-    <h1>欢迎来到我的游戏网站</h1>
-    <p>在这里，开启你的冒险之旅。</p>
-    <a class="btn" href="games.html">进入游戏列表</a>
+    <span class="badge">GAME</span>
+    <h1>页面标题</h1>
+    <p>在这里写点介绍。</p>
+    <a class="btn" href="index.html">返回首页</a>
   </div>
 </body>
 </html>
