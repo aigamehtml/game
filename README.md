@@ -4,7 +4,7 @@
 
 ## 在线访问
 
-- 网站首页：`https://<你的 Cloudflare Pages 地址>.pages.dev/`
+- 网站首页：`https://game.maikemaker.dpdns.org/`
 - 游戏列表：`/games.html`（自动生成，列出所有游戏）
 - 试玩示例：`/guess-number.html`（猜数字）、`/NeonBreakout.html`（霓虹弹球）
 
