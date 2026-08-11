@@ -14,11 +14,12 @@
       font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
       color: #fff;
-      overflow: hidden;
+      overflow-x: hidden;
       padding: 1.5rem;
     }
     .card {
       text-align: center;
+      width: 100%;
       max-width: 640px;
       padding: 3rem 3.4rem;
       border-radius: 24px;
@@ -94,6 +95,15 @@
     .links a:hover {
       color: #fff;
       border-bottom-color: #fff;
+    }
+    @media (max-width: 520px) {
+      .card {
+        padding: 2.2rem 1.4rem;
+        animation: none;
+      }
+      h1 { font-size: 1.9rem; }
+      .intro { font-size: 0.98rem; }
+      .links { font-size: 0.86rem; margin-top: 1.8rem; }
     }
   </style>
 </head>
