@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>🎯 舒尔特方格 · 专注力挑战</title>
+    <style>
+        /* ===== 全局重置 & 基础 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+            background: #FFF8F0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 12px 0 20px;
+            color: #4A3A2A;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            padding: 0 12px 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+
+        /* ===== 顶部标题 & 全屏 ===== */
+        .header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 2px 2px;
+        }
+        .title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #FF8A5C;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .title-emoji {
+            font-size: 26px;
+        }
+        .btn-fullscreen {
+            flex: 0 0 auto;
+            min-width: 60px;
+            padding: 8px 14px;
+            font-size: 18px;
+            border-radius: 30px;
+            border: 2px solid #FFD4B8;
+            background: transparent;
+            color: #6A5A4A;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+        }
+        .btn-fullscreen:active {
+            transform: scale(0.94);
+            background: #FFF0E8;
+        }
+
+        /* ===== 难度选择 ===== */
+        .difficulty-bar {
+            width: 100%;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 4px 0 2px;
+        }
+        .diff-btn {
+            flex: 1;
+            min-width: 52px;
+            max-width: 80px;
+            padding: 8px 0;
+            border: 2px solid #FFD4B8;
+            border-radius: 30px;
+            background: #FFFFFF;
+            color: #6A5A4A;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+            text-align: center;
+        }
+        .diff-btn:active {
+            transform: scale(0.94);
+        }
+        .diff-btn.active {
+            background: #FF8A5C;
+            color: #FFFFFF;
+            border-color: #FF8A5C;
+            box-shadow: 0 4px 12px rgba(255, 138, 92, 0.25);
+        }
+
+        /* ===== 状态栏 ===== */
+        .status-bar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #FFFFFFE0;
+            backdrop-filter: blur(4px);
+            padding: 8px 14px;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(255, 138, 92, 0.12);
+            font-size: 15px;
+            font-weight: 600;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+            border: 1px solid #FFE4D6;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #FFF5EE;
+            padding: 2px 12px 2px 8px;
+            border-radius: 30px;
+            height: 32px;
+        }
+        .status-item .label {
+            font-weight: 400;
+            color: #9A8A7A;
+            font-size: 13px;
+        }
+        .status-item .value {
+            font-weight: 700;
+            font-size: 17px;
+            min-width: 28px;
+            text-align: center;
+            color: #4A3A2A;
+        }
+        .status-item .value.time {
+            font-variant-numeric: tabular-nums;
+            min-width: 58px;
+        }
+        .status-item .value.error {
+            color: #FF6B6B;
+        }
+
+        /* ===== 进度条 ===== */
+        .progress-wrap {
+            width: 100%;
+            height: 6px;
+            background: #F0E8E0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 2px;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #FFB74D, #FF8A5C);
+            border-radius: 10px;
+            transition: width 0.25s ease;
+        }
+
+        /* ===== 网格容器 ===== */
+        .grid-wrapper {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            max-width: 480px;
+            margin: 4px 0 6px;
+            touch-action: manipulation;
+            position: relative;
+        }
+        .grid {
+            display: grid;
+            gap: 6px;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ===== 每个格子 ===== */
+        .cell {
+            background: #FFFFFF;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(22px, 7vw, 42px);
+            font-weight: 700;
+            color: #4A3A2A;
+            box-shadow: 0 4px 10px rgba(200, 170, 150, 0.15);
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.15s ease;
+            border: 3px solid #FFE4D6;
+            position: relative;
+            touch-action: manipulation;
+            aspect-ratio: 1 / 1;
+        }
+        .cell:active {
+            transform: scale(0.94);
+        }
+
+        /* 正确点击弹出动画 */
+        .cell.pop {
+            animation: popCorrect 0.3s ease;
+        }
+        @keyframes popCorrect {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
+
+        /* 错误闪烁 */
+        .cell.error-flash {
+            animation: errorShake 0.5s ease;
+            border-color: #FF6B6B !important;
+            background: #FFEBEE !important;
+        }
+        @keyframes errorShake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-5px); }
+            80% { transform: translateX(5px); }
+        }
+
+        /* 禁用点击 */
+        .cell.disabled {
+            cursor: default;
+            opacity: 0.7;
+        }
+        .cell.disabled:active {
+            transform: none;
+        }
+
+        /* ===== 底部按钮 ===== */
+        .action-bar {
+            width: 100%;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            min-width: 80px;
+            max-width: 200px;
+            padding: 14px 10px;
+            border: none;
+            border-radius: 30px;
+            font-size: 20px;
+            font-weight: 700;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            touch-action: manipulation;
+            background: #FFFFFF;
+            color: #4A3A2A;
+            border: 2px solid #FFE4D6;
+        }
+        .btn:active {
+            transform: scale(0.94);
+        }
+        .btn-primary {
+            background: #FF8A5C;
+            color: #FFFFFF;
+            border-color: #FF8A5C;
+            box-shadow: 0 4px 14px rgba(255, 138, 92, 0.30);
+        }
+        .btn-primary:active {
+            background: #E87A4E;
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: default;
+            transform: none;
+        }
+        .btn-rank {
+            background: #FFD4B8;
+            border-color: #FFD4B8;
+            color: #6A5A4A;
+            flex: 0.6;
+            max-width: 120px;
+        }
+        .btn-rank:active {
+            background: #FFC8A8;
+        }
+
+        /* ===== 倒计时覆盖层 ===== */
+        .countdown-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 248, 240, 0.85);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .countdown-overlay.active {
+            display: flex;
+        }
+        .countdown-number {
+            font-size: clamp(100px, 30vw, 200px);
+            font-weight: 900;
+            color: #FF8A5C;
+            animation: countPop 0.6s ease forwards;
+            line-height: 1;
+            text-shadow: 0 8px 30px rgba(255, 138, 92, 0.20);
+        }
+        .countdown-label {
+            font-size: clamp(24px, 6vw, 44px);
+            font-weight: 600;
+            color: #9A8A7A;
+            margin-top: -10px;
+            opacity: 0.7;
+        }
+        @keyframes countPop {
+            0% { transform: scale(0.4); opacity: 0; }
+            40% { transform: scale(1.15); opacity: 1; }
+            70% { transform: scale(0.95); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* ===== 成绩弹窗 ===== */
+        .result-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(60, 40, 30, 0.45);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+        .result-overlay.active {
+            display: flex;
+        }
+        .result-card {
+            background: #FFFFFF;
+            border-radius: 40px;
+            padding: 32px 28px 28px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 30px 60px rgba(60, 40, 30, 0.25);
+            text-align: center;
+            animation: resultPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 2px solid #FFE4D6;
+        }
+        @keyframes resultPop {
+            0% { transform: scale(0.7); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .result-emoji { font-size: 64px; line-height: 1.2; margin-bottom: 4px; }
+        .result-title { font-size: 28px; font-weight: 800; color: #4A3A2A; margin-bottom: 6px; }
+        .result-sub { font-size: 16px; color: #9A8A7A; margin-bottom: 16px; line-height: 1.6; }
+        .result-stats { display: flex; justify-content: center; gap: 20px 32px; flex-wrap: wrap; margin: 12px 0 18px; }
+        .result-stat { display: flex; flex-direction: column; align-items: center; }
+        .result-stat .num { font-size: 32px; font-weight: 800; color: #4A3A2A; }
+        .result-stat .lbl { font-size: 13px; color: #B0A090; font-weight: 500; margin-top: 2px; }
+        .result-stat .num.time-num { color: #FF8A5C; }
+        .result-stat .num.error-num { color: #FF6B6B; }
+        .result-message {
+            font-size: 18px;
+            font-weight: 600;
+            color: #6A5A4A;
+            background: #FFF5EE;
+            padding: 12px 16px;
+            border-radius: 20px;
+            margin: 8px 0 18px;
+            line-height: 1.5;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .result-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 30px;
+            font-size: 20px;
+            font-weight: 700;
+            font-family: inherit;
+            background: #FF8A5C;
+            color: #FFFFFF;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(255, 138, 92, 0.30);
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+        }
+        .result-btn:active {
+            transform: scale(0.94);
+            background: #E87A4E;
+        }
+
+        /* ===== 排名弹窗 ===== */
+        .rank-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(60, 40, 30, 0.45);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            padding: 20px;
+        }
+        .rank-overlay.active {
+            display: flex;
+        }
+        .rank-card {
+            background: #FFFFFF;
+            border-radius: 40px;
+            padding: 24px 20px 20px;
+            max-width: 440px;
+            width: 100%;
+            max-height: 80vh;
+            box-shadow: 0 30px 60px rgba(60, 40, 30, 0.25);
+            border: 2px solid #FFE4D6;
+            display: flex;
+            flex-direction: column;
+            animation: resultPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .rank-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .rank-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #4A3A2A;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .rank-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #B0A090;
+            padding: 0 8px;
+            transition: transform 0.2s;
+        }
+        .rank-close:active {
+            transform: scale(0.8);
+        }
+        .rank-list-wrap {
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 4px;
+            margin-bottom: 8px;
+        }
+        .rank-list-wrap::-webkit-scrollbar {
+            width: 4px;
+        }
+        .rank-list-wrap::-webkit-scrollbar-track {
+            background: #F0E8E0;
+            border-radius: 10px;
+        }
+        .rank-list-wrap::-webkit-scrollbar-thumb {
+            background: #FFD4B8;
+            border-radius: 10px;
+        }
+        .rank-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid #FFF0E8;
+            font-size: 15px;
+            font-weight: 500;
+        }
+        .rank-item:last-child {
+            border-bottom: none;
+        }
+        .rank-item .rank-pos {
+            font-weight: 700;
+            color: #FF8A5C;
+            min-width: 30px;
+        }
+        .rank-item .rank-detail {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            flex: 1;
+            justify-content: flex-end;
+        }
+        .rank-item .rank-detail span {
+            background: #FFF5EE;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #6A5A4A;
+        }
+        .rank-item .rank-detail .rank-time {
+            font-weight: 700;
+            color: #FF8A5C;
+        }
+        .rank-item .rank-detail .rank-errors {
+            color: #FF6B6B;
+        }
+        .rank-empty {
+            text-align: center;
+            color: #B0A090;
+            padding: 30px 0;
+            font-size: 18px;
+        }
+        .rank-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            flex-shrink: 0;
+            justify-content: center;
+        }
+        .rank-actions .btn-clear {
+            background: #FFE4D6;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #6A5A4A;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .rank-actions .btn-clear:active {
+            transform: scale(0.94);
+            background: #FFD4B8;
+        }
+        .rank-actions .btn-clear:disabled {
+            opacity: 0.4;
+            cursor: default;
+            transform: none;
+        }
+
+        /* ===== Toast 错误提示 ===== */
+        .toast {
+            position: fixed;
+            top: 18%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 107, 107, 0.92);
+            backdrop-filter: blur(4px);
+            color: #FFFFFF;
+            padding: 12px 28px;
+            border-radius: 40px;
+            font-size: 20px;
+            font-weight: 700;
+            font-family: inherit;
+            box-shadow: 0 8px 30px rgba(255, 107, 107, 0.30);
+            z-index: 500;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            pointer-events: none;
+            animation: toastIn 0.35s ease;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+        }
+        .toast.show {
+            display: flex;
+        }
+        @keyframes toastIn {
+            0% { transform: translateX(-50%) translateY(-20px) scale(0.9); opacity: 0; }
+            100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 400px) {
+            .title { font-size: 18px; }
+            .diff-btn { font-size: 14px; min-width: 44px; padding: 6px 0; }
+            .status-bar { font-size: 13px; padding: 6px 10px; }
+            .status-item { height: 28px; padding: 0 8px 0 6px; }
+            .status-item .value { font-size: 15px; min-width: 22px; }
+            .status-item .value.time { min-width: 48px; }
+            .cell { border-radius: 12px; border-width: 2px; font-size: clamp(18px, 6vw, 32px); }
+            .btn { font-size: 18px; padding: 12px 8px; max-width: 160px; }
+            .result-card { padding: 24px 18px 22px; }
+            .result-emoji { font-size: 48px; }
+            .result-title { font-size: 22px; }
+            .rank-card { padding: 18px 14px; }
+            .rank-item { font-size: 13px; padding: 8px 8px; flex-wrap: wrap; }
+            .rank-item .rank-detail { gap: 8px; }
+        }
+        @media (max-width: 350px) {
+            .grid { gap: 4px; }
+            .cell { border-radius: 10px; font-size: clamp(16px, 5vw, 26px); }
+            .status-bar { font-size: 12px; padding: 4px 8px; }
+            .status-item .value { font-size: 13px; min-width: 18px; }
+        }
+        @media (min-width: 600px) {
+            .app-container { padding: 16px 24px 40px; max-width: 560px; }
+            .grid { gap: 10px; }
+            .cell { border-radius: 22px; font-size: clamp(32px, 6vw, 52px); border-width: 4px; }
+            .title { font-size: 30px; }
+            .status-bar { font-size: 18px; padding: 12px 20px; border-radius: 28px; }
+            .btn { font-size: 22px; padding: 18px 16px; border-radius: 40px; }
+            .diff-btn { font-size: 18px; padding: 10px 0; }
+            .rank-card { padding: 28px 24px; }
+        }
+        .app-container:-webkit-full-screen { max-width: 100%; padding: 20px 24px 40px; background: #FFF8F0; }
+        .app-container:-moz-full-screen { max-width: 100%; padding: 20px 24px 40px; background: #FFF8F0; }
+        .app-container:fullscreen { max-width: 100%; padding: 20px 24px 40px; background: #FFF8F0; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #F0E8E0; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #FFD4B8; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container" id="app">
+        <!-- 头部 -->
+        <div class="header">
+            <div class="title"><span class="title-emoji">🎯</span> 舒尔特方格</div>
+            <button class="btn-fullscreen" id="fullscreenBtn">⛶ 全屏</button>
+        </div>
+
+        <!-- 难度选择 -->
+        <div class="difficulty-bar" id="difficultyBar">
+            <button class="diff-btn active" data-size="3">3×3</button>
+            <button class="diff-btn" data-size="4">4×4</button>
+            <button class="diff-btn" data-size="5">5×5</button>
+            <button class="diff-btn" data-size="6">6×6</button>
+        </div>
+
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="label">❌ 错误</span>
+                <span class="value error" id="errorCount">0</span>
+            </div>
+            <div class="status-item">
+                <span class="label">⏱️</span>
+                <span class="value time" id="timerDisplay">00.0s</span>
+            </div>
+        </div>
+
+        <!-- 进度条 -->
+        <div class="progress-wrap">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <!-- 网格 -->
+        <div class="grid-wrapper">
+            <div class="grid" id="gridContainer"></div>
+        </div>
+
+        <!-- 底部按钮 -->
+        <div class="action-bar">
+            <button class="btn btn-primary" id="startBtn">🚀 开始</button>
+            <button class="btn btn-rank" id="rankBtn">🏆 排名</button>
+        </div>
+    </div>
+
+    <!-- 倒计时 -->
+    <div class="countdown-overlay" id="countdownOverlay">
+        <div class="countdown-number" id="countdownNumber">3</div>
+        <div class="countdown-label" id="countdownLabel">准备好了吗？</div>
+    </div>
+
+    <!-- 成绩弹窗 -->
+    <div class="result-overlay" id="resultOverlay">
+        <div class="result-card">
+            <div class="result-emoji" id="resultEmoji">🌟</div>
+            <div class="result-title" id="resultTitle">太棒啦！</div>
+            <div class="result-sub" id="resultSub">你完成了全部挑战！</div>
+            <div class="result-stats">
+                <div class="result-stat">
+                    <span class="num time-num" id="resultTime">0.0s</span>
+                    <span class="lbl">⏱️ 用时</span>
+                </div>
+                <div class="result-stat">
+                    <span class="num error-num" id="resultErrors">0</span>
+                    <span class="lbl">❌ 错误</span>
+                </div>
+            </div>
+            <div class="result-message" id="resultMessage">✨ 你是专注力小天才！</div>
+            <button class="result-btn" id="resultBtn">🎮 再来一局</button>
+        </div>
+    </div>
+
+    <!-- 排名弹窗 -->
+    <div class="rank-overlay" id="rankOverlay">
+        <div class="rank-card">
+            <div class="rank-header">
+                <div class="rank-title">🏆 历史排名</div>
+                <button class="rank-close" id="rankCloseBtn">✕</button>
+            </div>
+            <div class="rank-list-wrap" id="rankListWrap">
+                <!-- 动态渲染 -->
+            </div>
+            <div class="rank-actions">
+                <button class="btn-clear" id="rankClearBtn">🗑️ 清除全部</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"><span>💪</span> 从 1 重新开始哦！</div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ===== DOM 引用 =====
+            const gridEl = document.getElementById('gridContainer');
+            const errorCountEl = document.getElementById('errorCount');
+            const timerDisplayEl = document.getElementById('timerDisplay');
+            const progressFill = document.getElementById('progressFill');
+            const startBtn = document.getElementById('startBtn');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const rankBtn = document.getElementById('rankBtn');
+            const rankOverlay = document.getElementById('rankOverlay');
+            const rankCloseBtn = document.getElementById('rankCloseBtn');
+            const rankListWrap = document.getElementById('rankListWrap');
+            const rankClearBtn = document.getElementById('rankClearBtn');
+            const diffBtns = document.querySelectorAll('.diff-btn');
+
+            const countdownOverlay = document.getElementById('countdownOverlay');
+            const countdownNumber = document.getElementById('countdownNumber');
+            const countdownLabel = document.getElementById('countdownLabel');
+
+            const resultOverlay = document.getElementById('resultOverlay');
+            const resultEmoji = document.getElementById('resultEmoji');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultSub = document.getElementById('resultSub');
+            const resultTime = document.getElementById('resultTime');
+            const resultErrors = document.getElementById('resultErrors');
+            const resultMessage = document.getElementById('resultMessage');
+            const resultBtn = document.getElementById('resultBtn');
+
+            const toast = document.getElementById('toast');
+
+            // ===== 游戏配置 =====
+            let currentSize = 3;
+            let total = currentSize * currentSize;
+
+            // ===== 游戏状态 =====
+            const state = {
+                numbers: [],
+                currentNumber: 1,
+                errors: 0,
+                startTime: null,
+                elapsedSeconds: 0,
+                timerInterval: null,
+                isPlaying: false,
+                isCountdown: false,
+                isFinished: false,
+                isIdle: true,
+            };
+
+            // ===== 历史记录管理 =====
+            const STORAGE_KEY = 'schulte_history';
+
+            function getHistory() {
+                try {
+                    const data = localStorage.getItem(STORAGE_KEY);
+                    return data ? JSON.parse(data) : [];
+                } catch { return []; }
+            }
+
+            function saveHistory(history) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+            }
+
+            function addRecord(size, time, errors) {
+                const history = getHistory();
+                const record = {
+                    size: size,
+                    time: Math.round(time * 10) / 10,
+                    errors: errors,
+                    date: new Date().toLocaleString('zh-CN', { hour12: false })
+                };
+                history.push(record);
+                history.sort((a, b) => a.time - b.time);
+                saveHistory(history);
+            }
+
+            function clearHistory() {
+                saveHistory([]);
+            }
+
+            function renderRankList() {
+                const history = getHistory();
+                if (history.length === 0) {
+                    rankListWrap.innerHTML = `<div class="rank-empty">🎈 还没有记录，快来挑战吧！</div>`;
+                    rankClearBtn.disabled = true;
+                    return;
+                }
+                rankClearBtn.disabled = false;
+                let html = '';
+                history.forEach((item, index) => {
+                    const pos = index + 1;
+                    const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : `#${pos}`;
+                    html += `
+                        <div class="rank-item">
+                            <span class="rank-pos">${medal}</span>
+                            <span style="flex:0 0 auto; font-weight:600;">${item.size}×${item.size}</span>
+                            <div class="rank-detail">
+                                <span class="rank-time">⏱️ ${item.time}s</span>
+                                <span class="rank-errors">❌ ${item.errors}</span>
+                                <span style="font-size:12px; color:#B0A090;">${item.date}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                rankListWrap.innerHTML = html;
+            }
+
+            // ===== 工具 =====
+            function shuffleArray(arr) {
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+
+            function generateOrdered() {
+                return Array.from({ length: total }, (_, i) => i + 1);
+            }
+
+            function generateRandom() {
+                return shuffleArray(generateOrdered());
+            }
+
+            function formatTime(seconds) {
+                return seconds.toFixed(1) + 's';
+            }
+
+            // ===== 渲染网格 =====
+            function renderGrid(numbers, disabled = true) {
+                gridEl.style.gridTemplateColumns = `repeat(${currentSize}, 1fr)`;
+                gridEl.innerHTML = '';
+                numbers.forEach((num) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell' + (disabled ? ' disabled' : '');
+                    cell.dataset.value = num;
+                    cell.textContent = num;
+                    cell.id = 'cell-' + num;
+                    gridEl.appendChild(cell);
+                });
+                updateCellStates();
+            }
+
+            // ===== 更新格子状态 =====
+            function updateCellStates() {
+                const cells = gridEl.querySelectorAll('.cell');
+                cells.forEach(cell => {
+                    cell.classList.remove('disabled', 'error-flash', 'pop');
+                    if (!state.isPlaying || state.isFinished || state.isIdle) {
+                        cell.classList.add('disabled');
+                    } else {
+                        cell.classList.remove('disabled');
+                    }
+                });
+                errorCountEl.textContent = state.errors;
+                const progress = total > 0 ? ((state.currentNumber - 1) / total) * 100 : 0;
+                progressFill.style.width = Math.min(progress, 100) + '%';
+            }
+
+            // ===== 计时器 =====
+            function startTimer() {
+                stopTimer();
+                state.startTime = performance.now();
+                state.elapsedSeconds = 0;
+                timerDisplayEl.textContent = '00.0s';
+                state.timerInterval = setInterval(() => {
+                    if (!state.isPlaying || state.isFinished) return;
+                    const now = performance.now();
+                    const diff = (now - state.startTime) / 1000;
+                    state.elapsedSeconds = diff;
+                    timerDisplayEl.textContent = formatTime(diff);
+                }, 100);
+            }
+
+            function stopTimer() {
+                if (state.timerInterval) {
+                    clearInterval(state.timerInterval);
+                    state.timerInterval = null;
+                }
+            }
+
+            function resetTimer() {
+                stopTimer();
+                state.startTime = null;
+                state.elapsedSeconds = 0;
+                timerDisplayEl.textContent = '00.0s';
+            }
+
+            // ===== 重置进度（出错时调用，数字排列保持不变） =====
+            function resetProgress() {
+                state.currentNumber = 1;
+                // 不重新生成数字，保持原排列
+                renderGrid(state.numbers, !state.isPlaying);
+                updateCellStates();
+                showToast('💪 从 1 重新开始哦！');
+            }
+
+            // ===== 游戏核心 =====
+            function handleCellClick(e) {
+                const cell = e.currentTarget;
+                if (!state.isPlaying || state.isFinished || state.isCountdown || state.isIdle) return;
+                if (cell.classList.contains('disabled')) return;
+
+                const val = parseInt(cell.dataset.value);
+
+                if (val === state.currentNumber) {
+                    cell.classList.add('pop');
+                    setTimeout(() => { cell.classList.remove('pop'); }, 300);
+                    state.currentNumber++;
+
+                    if (state.currentNumber > total) {
+                        state.isFinished = true;
+                        state.isPlaying = false;
+                        stopTimer();
+                        const finalTime = state.elapsedSeconds;
+                        addRecord(currentSize, finalTime, state.errors);
+                        updateCellStates();
+                        showResult(finalTime, state.errors);
+                        return;
+                    }
+                    updateCellStates();
+                } else {
+                    state.errors++;
+                    errorCountEl.textContent = state.errors;
+                    cell.classList.add('error-flash');
+                    setTimeout(() => { cell.classList.remove('error-flash'); }, 550);
+                    resetProgress();
+                }
+            }
+
+            // ===== 倒计时 =====
+            function startCountdown(callback) {
+                if (state.isCountdown) return;
+                state.isCountdown = true;
+                state.isPlaying = false;
+                state.isFinished = false;
+                state.isIdle = false;
+
+                gridEl.querySelectorAll('.cell').forEach(c => c.classList.add('disabled'));
+
+                countdownOverlay.classList.add('active');
+                let count = 3;
+                countdownNumber.textContent = count;
+                countdownLabel.textContent = '准备好了吗？';
+                countdownNumber.style.animation = 'none';
+                void countdownNumber.offsetHeight;
+                countdownNumber.style.animation = 'countPop 0.6s ease forwards';
+
+                const interval = setInterval(() => {
+                    count--;
+                    if (count > 0) {
+                        countdownNumber.textContent = count;
+                        countdownNumber.style.animation = 'none';
+                        void countdownNumber.offsetHeight;
+                        countdownNumber.style.animation = 'countPop 0.6s ease forwards';
+                        if (count === 1) {
+                            countdownLabel.textContent = '集中注意力！';
+                        }
+                    } else {
+                        clearInterval(interval);
+                        countdownNumber.textContent = '🚀';
+                        countdownNumber.style.animation = 'none';
+                        void countdownNumber.offsetHeight;
+                        countdownNumber.style.animation = 'countPop 0.6s ease forwards';
+                        countdownLabel.textContent = '开始！';
+
+                        setTimeout(() => {
+                            countdownOverlay.classList.remove('active');
+                            state.isCountdown = false;
+                            if (callback) callback();
+                        }, 700);
+                    }
+                }, 1000);
+            }
+
+            // ===== 开始游戏 =====
+            function startGame() {
+                if (state.isCountdown) {
+                    countdownOverlay.classList.remove('active');
+                    state.isCountdown = false;
+                }
+                resetTimer();
+                state.errors = 0;
+                state.currentNumber = 1;
+                state.isFinished = false;
+                state.isPlaying = false;
+                state.isIdle = false;
+
+                state.numbers = generateRandom();
+                renderGrid(state.numbers, true);
+                updateCellStates();
+
+                startCountdown(() => {
+                    state.isPlaying = true;
+                    state.isIdle = false;
+                    gridEl.querySelectorAll('.cell').forEach(c => c.classList.remove('disabled'));
+                    updateCellStates();
+                    startTimer();
+                    startBtn.textContent = '⏳ 进行中';
+                    startBtn.disabled = true;
+                });
+            }
+
+            // ===== 重置到空闲 =====
+            function resetToIdle() {
+                stopTimer();
+                state.isPlaying = false;
+                state.isFinished = false;
+                state.isCountdown = false;
+                state.isIdle = true;
+                state.errors = 0;
+                state.currentNumber = 1;
+                state.elapsedSeconds = 0;
+                timerDisplayEl.textContent = '00.0s';
+                errorCountEl.textContent = '0';
+                progressFill.style.width = '0%';
+                state.numbers = generateOrdered();
+                renderGrid(state.numbers, true);
+                updateCellStates();
+                startBtn.textContent = '🚀 开始';
+                startBtn.disabled = false;
+                resultOverlay.classList.remove('active');
+                countdownOverlay.classList.remove('active');
+                toast.classList.remove('show');
+            }
+
+            // ===== 切换难度 =====
+            function setDifficulty(size) {
+                if (state.isPlaying && !state.isFinished) {
+                    if (!confirm('游戏正在进行，切换难度将重新开始，确定吗？')) return;
+                }
+                currentSize = size;
+                total = size * size;
+                diffBtns.forEach(btn => {
+                    btn.classList.toggle('active', parseInt(btn.dataset.size) === size);
+                });
+                resetToIdle();
+            }
+
+            // ===== 显示成绩 =====
+            function showResult(time, errors) {
+                let emoji, title, sub, message;
+                const isPerfect = errors === 0;
+                const isFast = time < (total * 0.7);
+                const isGood = time < (total * 1.0);
+
+                if (isPerfect && isFast) {
+                    emoji = '🌟'; title = '完美通关！'; sub = '你是专注力小天才！';
+                    message = '🎉 太厉害了！又快又准，继续加油哦！';
+                } else if (isPerfect && isGood) {
+                    emoji = '🎉'; title = '超级棒！'; sub = '你的专注力非常出色！';
+                    message = '✨ 一个错误都没有，继续保持！';
+                } else if (isPerfect) {
+                    emoji = '😊'; title = '表现很好！'; sub = '虽然没有最快，但没有错误呢！';
+                    message = '💪 再练练速度，你一定能更快！';
+                } else if (isFast && errors <= 1) {
+                    emoji = '⭐'; title = '非常优秀！'; sub = '速度快，错误少！';
+                    message = '🌈 你真是个小能手！再试一次会更好！';
+                } else if (isGood && errors <= 2) {
+                    emoji = '😄'; title = '不错哦！'; sub = '你的专注力在提升！';
+                    message = '🌱 继续练习，你会越来越棒的！';
+                } else if (errors <= 3) {
+                    emoji = '💪'; title = '继续加油！'; sub = '每一次练习都是进步！';
+                    message = '🌻 别灰心，多练几次一定能更好！';
+                } else {
+                    emoji = '🌈'; title = '再来一次！'; sub = '挑战自己，你会更强！';
+                    message = '🌟 每一次尝试都很棒，重新开始吧！';
+                }
+                if (errors >= 5 && time < (total * 0.5)) {
+                    emoji = '🧐'; title = '放慢一点！'; sub = '准确比速度更重要哦！';
+                    message = '😊 试着看清楚每个数字，再点击吧！';
+                }
+
+                resultEmoji.textContent = emoji;
+                resultTitle.textContent = title;
+                resultSub.textContent = sub;
+                resultTime.textContent = formatTime(time);
+                resultErrors.textContent = errors;
+                resultMessage.textContent = message;
+
+                resultOverlay.classList.add('active');
+                startBtn.textContent = '🔄 重新开始';
+                startBtn.disabled = false;
+            }
+
+            // ===== Toast =====
+            let toastTimer = null;
+
+            function showToast(text) {
+                toast.innerHTML = text || '💪 从 1 重新开始哦！';
+                toast.classList.add('show');
+                if (toastTimer) clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 1000);
+            }
+
+            // ===== 全屏 =====
+            function toggleFullscreen() {
+                const el = document.documentElement;
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+                    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                } else {
+                    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                }
+            }
+
+            // ===== 事件绑定 =====
+            gridEl.addEventListener('click', function(e) {
+                const cell = e.target.closest('.cell');
+                if (!cell) return;
+                handleCellClick({ currentTarget: cell });
+            });
+            gridEl.addEventListener('touchstart', function(e) {}, { passive: true });
+
+            startBtn.addEventListener('click', function() {
+                if (state.isIdle) {
+                    startGame();
+                } else if (state.isFinished) {
+                    resetToIdle();
+                    startGame();
+                } else if (state.isPlaying) {
+                    // 进行中，禁用
+                } else {
+                    resetToIdle();
+                    startGame();
+                }
+            });
+
+            diffBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const size = parseInt(this.dataset.size);
+                    setDifficulty(size);
+                });
+            });
+
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+            resultBtn.addEventListener('click', function() {
+                resultOverlay.classList.remove('active');
+                resetToIdle();
+                startBtn.textContent = '🚀 开始';
+                startBtn.disabled = false;
+            });
+
+            // 排名相关
+            rankBtn.addEventListener('click', function() {
+                renderRankList();
+                rankOverlay.classList.add('active');
+            });
+            rankCloseBtn.addEventListener('click', function() {
+                rankOverlay.classList.remove('active');
+            });
+            rankOverlay.addEventListener('click', function(e) {
+                if (e.target === rankOverlay) {
+                    rankOverlay.classList.remove('active');
+                }
+            });
+            rankClearBtn.addEventListener('click', function() {
+                if (confirm('确定要清除所有历史记录吗？')) {
+                    clearHistory();
+                    renderRankList();
+                    showToast('🗑️ 已清除所有记录');
+                }
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'r' || e.key === 'R') { e.preventDefault();
+                    startBtn.click(); }
+                if (e.key === 'f' || e.key === 'F') { e.preventDefault();
+                    fullscreenBtn.click(); }
+                if (e.key === 'Escape') {
+                    if (rankOverlay.classList.contains('active')) rankOverlay.classList.remove('active');
+                    if (resultOverlay.classList.contains('active')) resultOverlay.classList.remove('active');
+                }
+            });
+
+            // ===== 初始化 =====
+            function init() {
+                currentSize = 3;
+                total = 9;
+                state.numbers = generateOrdered();
+                state.isIdle = true;
+                state.isPlaying = false;
+                state.isFinished = false;
+                state.isCountdown = false;
+                state.errors = 0;
+                state.currentNumber = 1;
+                resetTimer();
+                renderGrid(state.numbers, true);
+                updateCellStates();
+                startBtn.textContent = '🚀 开始';
+                startBtn.disabled = false;
+                diffBtns.forEach(btn => {
+                    btn.classList.toggle('active', parseInt(btn.dataset.size) === 3);
+                });
+                resultOverlay.classList.remove('active');
+                countdownOverlay.classList.remove('active');
+                toast.classList.remove('show');
+                rankOverlay.classList.remove('active');
+            }
+
+            init();
+
+            // 适配 safe area
+            const style = document.createElement('style');
+            style.textContent = `
+                @supports (padding: max(0px)) {
+                    .app-container {
+                        padding-left: max(12px, env(safe-area-inset-left));
+                        padding-right: max(12px, env(safe-area-inset-right));
+                        padding-bottom: max(20px, env(safe-area-inset-bottom));
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+
+            console.log('🎯 舒尔特方格已加载，点击“开始”挑战！');
+        })();
+    </script>
+</body>
+</html>
