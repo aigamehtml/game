@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>一生一世 · 1314 接心挑战</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #0a0a2e;
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: none;
+            position: fixed;
+            inset: 0;
+        }
+        canvas {
+            display: block;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            touch-action: none;
+            pointer-events: auto;
+        }
+        #ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #ui-overlay button {
+            pointer-events: auto;
+            cursor: pointer;
+            border: none;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            padding: 16px 40px;
+            transition: all 0.3s ease;
+            letter-spacing: 2px;
+            font-family: inherit;
+            box-shadow: 0 8px 32px rgba(255, 105, 180, 0.4);
+        }
+        #ui-overlay button:active {
+            transform: scale(0.95);
+        }
+        .btn-start {
+            background: linear-gradient(135deg, #ff6b9d, #ff2d75);
+            color: #fff;
+            font-size: 1.6rem !important;
+            padding: 20px 50px !important;
+            box-shadow: 0 12px 40px rgba(255, 45, 117, 0.6) !important;
+            animation: pulse-btn 1.5s ease-in-out infinite;
+        }
+        .btn-restart {
+            background: linear-gradient(135deg, #ff9a56, #ff6b9d);
+            color: #fff;
+            font-size: 1.3rem !important;
+            padding: 18px 44px !important;
+            box-shadow: 0 8px 30px rgba(255, 154, 86, 0.5) !important;
+        }
+        @keyframes pulse-btn {
+            0%,
+            100% {
+                transform: scale(1);
+                box-shadow: 0 12px 40px rgba(255, 45, 117, 0.6);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 16px 52px rgba(255, 45, 117, 0.85);
+            }
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui-overlay">
+        <button id="btnStart" class="btn-start">💘 开始游戏</button>
+        <button id="btnRestart" class="btn-restart hidden">💫 再来一次</button>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ==================== 常量定义（严格按需求） ====================
+            const GAME_DURATION = 40;
+            const WIN_SCORE = 1314;
+            const RED_SCORE = 50;
+            const GRAY_SCORE = -50;
+            const GOLD_SCORE = 131;
+            const SPAWN_MIN = 0.6;
+            const SPAWN_MAX = 1.0;
+            const RED_RATIO = 0.7;
+            const GRAY_RATIO = 0.3;
+            const GOLD_PROBABILITY = 0.04;
+            const FALL_SPEED_MIN = 2;
+            const FALL_SPEED_MAX = 5;
+            const PHASE1_END = 10;
+            const PHASE2_END = 25;
+            const COMBO_TIER1 = 5;
+            const COMBO_TIER2 = 10;
+            const COMBO_MULT_1 = 1.0;
+            const COMBO_MULT_2 = 1.5;
+            const COMBO_MULT_3 = 2.0;
+
+            const STATE = {
+                MENU: 'menu',
+                PLAYING: 'playing',
+                WIN: 'win',
+                LOSE: 'lose'
+            };
+
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            let dpr = 1;
+            let canvasW = 0;
+            let canvasH = 0;
+            let cssW = 0;
+            let cssH = 0;
+
+            function resizeCanvas() {
+                const windowW = window.innerWidth;
+                const windowH = window.innerHeight;
+                const targetRatio = 9 / 16;
+                let newCssW, newCssH;
+
+                if (windowW / windowH > targetRatio) {
+                    newCssH = windowH;
+                    newCssW = Math.floor(newCssH * targetRatio);
+                } else {
+                    newCssW = windowW;
+                    newCssH = Math.floor(newCssW / targetRatio);
+                }
+
+                newCssW = Math.max(newCssW, 280);
+                newCssH = Math.max(newCssH, 500);
+
+                if (newCssW > windowW) {
+                    newCssW = windowW;
+                    newCssH = Math.floor(newCssW / targetRatio);
+                }
+                if (newCssH > windowH) {
+                    newCssH = windowH;
+                    newCssW = Math.floor(newCssH * targetRatio);
+                }
+
+                cssW = newCssW;
+                cssH = newCssH;
+
+                canvas.style.width = cssW + 'px';
+                canvas.style.height = cssH + 'px';
+
+                dpr = Math.min(window.devicePixelRatio || 1, 3);
+                canvasW = Math.round(cssW * dpr);
+                canvasH = Math.round(cssH * dpr);
+                canvas.width = canvasW;
+                canvas.height = canvasH;
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                initStars();
+
+                if (typeof player !== 'undefined' && player) {
+                    player.x = Math.max(30, Math.min(cssW - 30, player.x));
+                    player.targetX = player.x;
+                }
+            }
+
+            let audioCtx = null;
+            let isMuted = false;
+            let audioInitialized = false;
+
+            function initAudio() {
+                if (audioInitialized) return;
+                try {
+                    audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                    audioInitialized = true;
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                } catch (e) { /* ignore */ }
+            }
+
+            function playTone(freq, duration, type, volume, delay) {
+                if (!audioCtx || isMuted) return;
+                try {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = type || 'sine';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime + (delay || 0));
+                    gain.gain.setValueAtTime(volume || 0.3, audioCtx.currentTime + (delay || 0));
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (delay || 0) + duration);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime + (delay || 0));
+                    osc.stop(audioCtx.currentTime + (delay || 0) + duration);
+                } catch (e) { /* ignore */ }
+            }
+
+            function sfxDing() { playTone(880, 0.12, 'sine', 0.4, 0); playTone(1320, 0.08, 'sine', 0.2, 0.05); }
+
+            function sfxPuff() { playTone(150, 0.22, 'square', 0.25, 0); playTone(100, 0.2, 'sawtooth', 0.15, 0.04); }
+
+            function sfxGold() { playTone(880, 0.15, 'sine', 0.4, 0); playTone(1108, 0.15, 'sine', 0.35, 0.1); playTone(1318, 0.2, 'sine', 0.3, 0.2); }
+
+            function sfxWin() { [523, 659, 784, 1047, 1318].forEach((f, i) => playTone(f, 0.2, 'sine', 0.35, i * 0.12)); }
+
+            function sfxLose() { [400, 320, 250, 180].forEach((f, i) => playTone(f, 0.25, 'sine', 0.3, i * 0.15)); }
+
+            let gameState = STATE.MENU;
+            let score = 0;
+            let timeLeft = GAME_DURATION;
+            let combo = 0;
+            let comboMultiplier = COMBO_MULT_1;
+            let highestScore = 0;
+            let hearts = [];
+            let particles = [];
+            let floatingTexts = [];
+            let stars = [];
+            let player = { x: 0, targetX: 0, shakeTime: 0, bounceTime: 0 };
+            let spawnTimer = 0;
+            let spawnInterval = 0;
+            let redFlash = 0;
+            let lastTime = 0;
+            let elapsedTime = 0;
+            let gameStartTime = 0;
+            let muteBtnArea = null;
+
+            try {
+                const saved = localStorage.getItem('love1314_highscore');
+                if (saved) highestScore = parseInt(saved, 10) || 0;
+            } catch (e) { /* ignore */ }
+
+            function initStars() {
+                stars = [];
+                const count = Math.floor(cssW * cssH / 2500);
+                for (let i = 0; i < count; i++) {
+                    stars.push({
+                        x: Math.random() * cssW,
+                        y: Math.random() * cssH * 0.75,
+                        baseAlpha: 0.2 + Math.random() * 0.7,
+                        radius: 0.5 + Math.random() * 1.8,
+                        twinkleSpeed: 0.5 + Math.random() * 2.5,
+                        twinklePhase: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+
+            function getDifficultyPhase() {
+                const elapsed = GAME_DURATION - timeLeft;
+                if (elapsed < PHASE1_END) return 0;
+                if (elapsed < PHASE2_END) return 1;
+                return 2;
+            }
+
+            function getSpawnInterval() {
+                const phase = getDifficultyPhase();
+                if (phase === 0) return 0.8 + Math.random() * 0.2;
+                if (phase === 1) return 0.7 + Math.random() * 0.2;
+                return 0.55 + Math.random() * 0.25;
+            }
+
+            function getFallSpeed() {
+                const progress = Math.min(1, (GAME_DURATION - timeLeft) / GAME_DURATION);
+                return FALL_SPEED_MIN + (FALL_SPEED_MAX - FALL_SPEED_MIN) * progress;
+            }
+
+            function getGrayRatio() {
+                const phase = getDifficultyPhase();
+                if (phase === 0) return 0.1;
+                if (phase === 1) return 0.25;
+                return 0.3;
+            }
+
+            function initPlayer() {
+                player.x = cssW / 2;
+                player.targetX = cssW / 2;
+                player.shakeTime = 0;
+                player.bounceTime = 0;
+            }
+
+            function spawnHeart() {
+                const grayRatio = getGrayRatio();
+                const isGray = Math.random() < grayRatio;
+                let type = isGray ? 'gray' : 'red';
+                if (type === 'red' && Math.random() < GOLD_PROBABILITY) {
+                    type = 'gold';
+                }
+                const size = Math.max(18, Math.min(30, cssW * 0.065));
+                const x = size + Math.random() * (cssW - size * 2);
+                const speed = getFallSpeed();
+                const swayAmp = 3 + Math.random() * 8;
+                const swayFreq = 0.5 + Math.random() * 1.5;
+                const swayPhase = Math.random() * Math.PI * 2;
+
+                hearts.push({
+                    x: x,
+                    y: -size * 2,
+                    baseX: x,
+                    size: size,
+                    type: type,
+                    speed: speed,
+                    swayAmp: swayAmp,
+                    swayFreq: swayFreq,
+                    swayPhase: swayPhase,
+                    rotation: 0,
+                    rotationSpeed: (Math.random() - 0.5) * 0.04,
+                    alpha: 1,
+                });
+            }
+
+            function resetSpawnTimer() {
+                spawnInterval = getSpawnInterval();
+                spawnTimer = spawnInterval;
+            }
+
+            function createParticles(x, y, type, count) {
+                const colors = {
+                    'red': ['#ff6b9d', '#ff2d75', '#ff8fab', '#ffc2d1', '#ff477e'],
+                    'gray': ['#888888', '#666666', '#999999', '#aaaaaa', '#555555'],
+                    'gold': ['#ffd700', '#ffec8b', '#ffb90f', '#fff8dc', '#ffc125']
+                };
+                const palette = colors[type] || colors.red;
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1 + Math.random() * 5;
+                    particles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed - 1,
+                        life: 0.6 + Math.random() * 0.7,
+                        maxLife: 0.6 + Math.random() * 0.7,
+                        radius: 2 + Math.random() * 5,
+                        color: palette[Math.floor(Math.random() * palette.length)],
+                        type: 'circle',
+                        gravity: 0.08 + Math.random() * 0.08,
+                    });
+                }
+                for (let i = 0; i < Math.floor(count * 0.4); i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 0.8 + Math.random() * 3.5;
+                    particles.push({
+                        x: x + (Math.random() - 0.5) * 10,
+                        y: y + (Math.random() - 0.5) * 10,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed - 0.8,
+                        life: 0.5 + Math.random() * 0.6,
+                        maxLife: 0.5 + Math.random() * 0.6,
+                        radius: 3 + Math.random() * 4,
+                        color: palette[Math.floor(Math.random() * palette.length)],
+                        type: 'heart',
+                        gravity: 0.05,
+                    });
+                }
+            }
+
+            function createFloatingText(x, y, text, color, size) {
+                floatingTexts.push({
+                    x: x,
+                    y: y,
+                    text: text,
+                    color: color || '#ffffff',
+                    size: size || 24,
+                    life: 1.2,
+                    maxLife: 1.2,
+                    vy: -2.2,
+                });
+            }
+
+            function getBasketBounds() {
+                const basketW = Math.max(50, cssW * 0.2);
+                const basketH = Math.max(22, cssW * 0.08);
+                const basketX = player.x - basketW / 2;
+                const basketY = cssH * 0.82 - basketH;
+                return { x: basketX, y: basketY, w: basketW, h: basketH, bottomY: cssH * 0.82 };
+            }
+
+            function checkCollision(heart) {
+                const basket = getBasketBounds();
+                const hx = heart.x;
+                const hy = heart.y;
+                const hs = heart.size;
+                const heartBottom = hy + hs * 0.7;
+                const heartTop = hy - hs * 0.7;
+                if (heartBottom >= basket.y && heartTop <= basket.bottomY) {
+                    if (hx >= basket.x && hx <= basket.x + basket.w) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            function handleCatch(heart) {
+                if (heart.type === 'red') {
+                    combo++;
+                    updateComboMultiplier();
+                    const mult = comboMultiplier;
+                    const actualScore = Math.round(RED_SCORE * mult);
+                    score += actualScore;
+                    const displayText = mult > 1 ? '+' + actualScore + ' x' + mult + '!' : '+' + actualScore;
+                    createFloatingText(heart.x, heart.y - 20, displayText, '#ff6b9d', mult > 1 ? 28 : 22);
+                    createParticles(heart.x, heart.y, 'red', 18 + combo * 2);
+                    sfxDing();
+                    player.bounceTime = 0.2;
+                } else if (heart.type === 'gray') {
+                    combo = 0;
+                    comboMultiplier = COMBO_MULT_1;
+                    score = Math.max(0, score + GRAY_SCORE);
+                    createFloatingText(heart.x, heart.y - 20, GRAY_SCORE.toString(), '#aaaaaa', 22);
+                    createParticles(heart.x, heart.y, 'gray', 14);
+                    redFlash = 0.6;
+                    player.shakeTime = 0.35;
+                    sfxPuff();
+                } else if (heart.type === 'gold') {
+                    combo++;
+                    updateComboMultiplier();
+                    const mult = comboMultiplier;
+                    const actualScore = Math.round(GOLD_SCORE * mult);
+                    score += actualScore;
+                    createFloatingText(heart.x, heart.y - 20, '+' + actualScore + ' 💛', '#ffd700', 30);
+                    createParticles(heart.x, heart.y, 'gold', 32);
+                    sfxGold();
+                    player.bounceTime = 0.3;
+                }
+                if (score > WIN_SCORE) {
+                    endGame(true);
+                }
+            }
+
+            function updateComboMultiplier() {
+                if (combo >= COMBO_TIER2) comboMultiplier = COMBO_MULT_3;
+                else if (combo >= COMBO_TIER1) comboMultiplier = COMBO_MULT_2;
+                else comboMultiplier = COMBO_MULT_1;
+            }
+
+            function endGame(isWin) {
+                gameState = isWin ? STATE.WIN : STATE.LOSE;
+                if (isWin) sfxWin();
+                else sfxLose();
+                if (score > highestScore) {
+                    highestScore = score;
+                    try { localStorage.setItem('love1314_highscore', highestScore.toString()); } catch (e) { /* ignore */ }
+                }
+                showRestartButton();
+            }
+
+            function showRestartButton() {
+                const btn = document.getElementById('btnRestart');
+                btn.classList.remove('hidden');
+                btn.textContent = gameState === STATE.WIN ? '🎉 再玩一次' : '💫 再来一次';
+            }
+
+            function hideRestartButton() {
+                document.getElementById('btnRestart').classList.add('hidden');
+            }
+
+            function resetGame() {
+                score = 0;
+                timeLeft = GAME_DURATION;
+                combo = 0;
+                comboMultiplier = COMBO_MULT_1;
+                hearts = [];
+                particles = [];
+                floatingTexts = [];
+                redFlash = 0;
+                elapsedTime = 0;
+                spawnTimer = 0;
+                resetSpawnTimer();
+                initPlayer();
+                hideRestartButton();
+                gameState = STATE.PLAYING;
+                gameStartTime = performance.now();
+            }
+
+            function update(dt) {
+                const now = performance.now();
+                if (gameState === STATE.PLAYING) {
+                    elapsedTime = (now - gameStartTime) / 1000;
+                    timeLeft = Math.max(0, GAME_DURATION - elapsedTime);
+                    if (timeLeft <= 0) {
+                        timeLeft = 0;
+                        endGame(score > WIN_SCORE);
+                        return;
+                    }
+                }
+
+                if (gameState === STATE.PLAYING && typeof keys !== 'undefined') {
+                    const moveSpeed = Math.max(200, cssW * 0.5) * dt;
+                    if (keys['ArrowLeft'] || keys['a'] || keys['A']) player.targetX = Math.max(30, player.targetX - moveSpeed);
+                    if (keys['ArrowRight'] || keys['d'] || keys['D']) player.targetX = Math.min(cssW - 30, player.targetX + moveSpeed);
+                }
+
+                player.x += (player.targetX - player.x) * Math.min(1, dt * 18);
+                if (player.shakeTime > 0) {
+                    player.shakeTime -= dt;
+                    if (player.shakeTime > 0) {
+                        const shakeX = (Math.random() - 0.5) * 10;
+                        player.x += shakeX * dt * 30;
+                    }
+                }
+                if (player.bounceTime > 0) player.bounceTime -= dt;
+                player.x = Math.max(30, Math.min(cssW - 30, player.x));
+
+                if (redFlash > 0) redFlash = Math.max(0, redFlash - dt * 2.5);
+
+                if (gameState === STATE.PLAYING) {
+                    spawnTimer -= dt;
+                    if (spawnTimer <= 0) {
+                        spawnHeart();
+                        resetSpawnTimer();
+                    }
+                }
+
+                for (let i = hearts.length - 1; i >= 0; i--) {
+                    const h = hearts[i];
+                    h.y += h.speed * dt * 60;
+                    h.swayPhase += h.swayFreq * dt;
+                    h.x = h.baseX + Math.sin(h.swayPhase) * h.swayAmp;
+                    h.rotation += h.rotationSpeed * dt * 60;
+                    if (h.type === 'gold' && Math.random() < 0.35) {
+                        particles.push({
+                            x: h.x + (Math.random() - 0.5) * h.size * 0.6,
+                            y: h.y + (Math.random() - 0.5) * h.size * 0.6,
+                            vx: (Math.random() - 0.5) * 0.8,
+                            vy: 0.5 + Math.random() * 1.2,
+                            life: 0.3 + Math.random() * 0.3,
+                            maxLife: 0.5,
+                            radius: 1.5 + Math.random() * 2.5,
+                            color: '#ffd700',
+                            type: 'circle',
+                            gravity: 0.01,
+                        });
+                    }
+                    if (gameState === STATE.PLAYING && checkCollision(h)) {
+                        handleCatch(h);
+                        hearts.splice(i, 1);
+                        continue;
+                    }
+                    if (h.y > cssH + h.size * 2) {
+                        hearts.splice(i, 1);
+                    }
+                }
+
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.life -= dt;
+                    if (p.life <= 0) { particles.splice(i, 1); continue; }
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += p.gravity || 0;
+                }
+
+                for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                    const ft = floatingTexts[i];
+                    ft.life -= dt;
+                    if (ft.life <= 0) { floatingTexts.splice(i, 1); continue; }
+                    ft.y += ft.vy;
+                    ft.vy *= 0.98;
+                }
+            }
+
+            function drawBackground() {
+                const grad = ctx.createLinearGradient(0, 0, 0, cssH);
+                grad.addColorStop(0, '#0a0a2e');
+                grad.addColorStop(0.3, '#151540');
+                grad.addColorStop(0.6, '#1a1a50');
+                grad.addColorStop(0.85, '#2d1b69');
+                grad.addColorStop(1, '#1a0a3e');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, cssW, cssH);
+
+                ctx.save();
+                ctx.globalAlpha = 0.12;
+                for (let i = 0; i < 5; i++) {
+                    const offsetX = Math.sin(elapsedTime * 0.05 + i * 2) * 30;
+                    ctx.beginPath();
+                    ctx.moveTo(cssW * 0.15 + offsetX, cssH * 0.1);
+                    ctx.quadraticCurveTo(cssW * 0.5 + offsetX * 0.5, cssH * 0.5 + i * 15, cssW * 0.85 - offsetX, cssH * 0.75);
+                    ctx.strokeStyle = 'rgba(200,200,255,0.35)';
+                    ctx.lineWidth = 25 - i * 3;
+                    ctx.stroke();
+                }
+                ctx.restore();
+
+                ctx.save();
+                for (let i = 0; i < 20; i++) {
+                    const gx = cssW * (0.2 + i * 0.04) + Math.sin(elapsedTime * 0.1 + i) * 10;
+                    const gy = cssH * (0.1 + i * 0.035);
+                    ctx.globalAlpha = 0.08 + Math.sin(elapsedTime * 0.5 + i) * 0.05;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(gx, gy, 2 + Math.random() * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+
+                ctx.save();
+                const bridgeY = cssH * 0.38;
+                const bridgeW = cssW * 0.65;
+                const bridgeH = cssH * 0.18;
+                const bridgeX = cssW * 0.175;
+                ctx.globalAlpha = 0.45;
+                ctx.beginPath();
+                ctx.moveTo(bridgeX, bridgeY + bridgeH);
+                ctx.quadraticCurveTo(bridgeX + bridgeW / 2, bridgeY - bridgeH * 0.5, bridgeX + bridgeW, bridgeY + bridgeH);
+                ctx.lineTo(bridgeX + bridgeW - 8, bridgeY + bridgeH);
+                ctx.quadraticCurveTo(bridgeX + bridgeW / 2, bridgeY - bridgeH * 0.35, bridgeX + 8, bridgeY + bridgeH);
+                ctx.closePath();
+                ctx.fillStyle = '#1a0a30';
+                ctx.fill();
+                ctx.fillStyle = '#150a25';
+                ctx.fillRect(bridgeX + bridgeW * 0.18, bridgeY + bridgeH * 0.6, 6, bridgeH * 0.4);
+                ctx.fillRect(bridgeX + bridgeW * 0.78, bridgeY + bridgeH * 0.6, 6, bridgeH * 0.4);
+                ctx.globalAlpha = 0.25;
+                for (let i = 0; i < 12; i++) {
+                    const lx = bridgeX + bridgeW * (0.1 + i * 0.07);
+                    const t = (lx - bridgeX) / bridgeW;
+                    const ly = bridgeY + bridgeH - Math.sin(t * Math.PI) * bridgeH * 0.7;
+                    const flicker = 0.5 + Math.sin(elapsedTime * 2 + i * 1.5) * 0.3;
+                    ctx.globalAlpha = 0.15 * flicker;
+                    ctx.fillStyle = '#ffd700';
+                    ctx.beginPath();
+                    ctx.arc(lx, ly, 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+
+                ctx.save();
+                const time = elapsedTime;
+                for (const s of stars) {
+                    const alpha = s.baseAlpha * (0.5 + 0.5 * Math.sin(time * s.twinkleSpeed + s.twinklePhase));
+                    ctx.globalAlpha = Math.max(0.05, alpha);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+
+                ctx.save();
+                ctx.globalAlpha = 0.15;
+                const groundGrad = ctx.createLinearGradient(0, cssH * 0.78, 0, cssH);
+                groundGrad.addColorStop(0, 'rgba(100,60,180,0)');
+                groundGrad.addColorStop(1, 'rgba(80,40,150,0.3)');
+                ctx.fillStyle = groundGrad;
+                ctx.fillRect(0, cssH * 0.78, cssW, cssH * 0.22);
+                ctx.restore();
+            }
+
+            function drawHeartShape(cx, cy, size, color, strokeColor, glowColor) {
+                ctx.save();
+                ctx.translate(cx, cy);
+                const s = size;
+                ctx.beginPath();
+                ctx.moveTo(0, s * 0.7);
+                ctx.bezierCurveTo(-s * 0.8, -s * 0.1, -s * 0.55, -s * 0.65, 0, -s * 0.25);
+                ctx.bezierCurveTo(s * 0.55, -s * 0.65, s * 0.8, -s * 0.1, 0, s * 0.7);
+                ctx.closePath();
+                if (glowColor) {
+                    ctx.shadowColor = glowColor;
+                    ctx.shadowBlur = 15;
+                }
+                if (color) {
+                    ctx.fillStyle = color;
+                    ctx.fill();
+                }
+                if (strokeColor) {
+                    ctx.strokeStyle = strokeColor;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+
+            function drawRedHeart(h) {
+                const cx = h.x;
+                const cy = h.y;
+                const s = h.size;
+                const grad = ctx.createRadialGradient(cx - s * 0.2, cy - s * 0.3, s * 0.1, cx, cy, s * 0.8);
+                grad.addColorStop(0, '#ff9ec4');
+                grad.addColorStop(0.4, '#ff477e');
+                grad.addColorStop(0.8, '#e02050');
+                grad.addColorStop(1, '#c01040');
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(h.rotation || 0);
+                drawHeartShape(0, 0, s, grad, 'rgba(255,255,255,0.3)', 'rgba(255,100,150,0.5)');
+                ctx.beginPath();
+                ctx.ellipse(-s * 0.2, -s * 0.35, s * 0.18, s * 0.12, -0.4, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function drawGrayHeart(h) {
+                const cx = h.x;
+                const cy = h.y;
+                const s = h.size;
+                const grad = ctx.createRadialGradient(cx - s * 0.15, cy - s * 0.3, s * 0.1, cx, cy, s * 0.8);
+                grad.addColorStop(0, '#999999');
+                grad.addColorStop(0.5, '#666666');
+                grad.addColorStop(1, '#3a3a3a');
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(h.rotation || 0);
+                drawHeartShape(0, 0, s, grad, 'rgba(50,50,50,0.5)', null);
+                ctx.strokeStyle = '#2a2a2a';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(-s * 0.25, -s * 0.2);
+                ctx.lineTo(-s * 0.05, s * 0.05);
+                ctx.lineTo(-s * 0.3, s * 0.3);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(s * 0.15, -s * 0.3);
+                ctx.lineTo(s * 0.3, s * 0.0);
+                ctx.lineTo(s * 0.1, s * 0.25);
+                ctx.stroke();
+                ctx.strokeStyle = 'rgba(200,200,200,0.7)';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(-s * 0.6, -s * 0.5);
+                ctx.lineTo(s * 0.6, s * 0.5);
+                ctx.moveTo(s * 0.6, -s * 0.5);
+                ctx.lineTo(-s * 0.6, s * 0.5);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            function drawGoldHeart(h) {
+                const cx = h.x;
+                const cy = h.y;
+                const s = h.size;
+                const grad = ctx.createRadialGradient(cx - s * 0.2, cy - s * 0.35, s * 0.1, cx, cy, s * 0.9);
+                grad.addColorStop(0, '#fff8dc');
+                grad.addColorStop(0.3, '#ffd700');
+                grad.addColorStop(0.7, '#ffb90f');
+                grad.addColorStop(1, '#daa520');
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(h.rotation || 0);
+                drawHeartShape(0, 0, s, grad, 'rgba(255,255,200,0.7)', 'rgba(255,215,0,0.8)');
+                ctx.beginPath();
+                ctx.ellipse(-s * 0.18, -s * 0.38, s * 0.22, s * 0.14, -0.4, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.75)';
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function drawHeart(h) {
+                if (h.type === 'red') drawRedHeart(h);
+                else if (h.type === 'gray') drawGrayHeart(h);
+                else if (h.type === 'gold') drawGoldHeart(h);
+            }
+
+            function drawPlayer() {
+                const px = player.x;
+                const py = cssH * 0.82;
+                const bodyScale = Math.max(0.8, Math.min(1.2, cssW / 400));
+                const headR = 24 * bodyScale;
+                const bodyH = 35 * bodyScale;
+                const basketW = Math.max(50, cssW * 0.2);
+                const basketH = Math.max(22, cssW * 0.08);
+                const bounceOffset = player.bounceTime > 0 ? -Math.sin(player.bounceTime * 25) * 8 : 0;
+
+                ctx.save();
+                ctx.translate(px, py + bounceOffset);
+
+                const bodyGrad = ctx.createLinearGradient(-bodyH * 0.6, -bodyH, bodyH * 0.6, 0);
+                bodyGrad.addColorStop(0, '#e05070');
+                bodyGrad.addColorStop(1, '#c03050');
+                ctx.fillStyle = bodyGrad;
+                ctx.beginPath();
+                ctx.roundRect(-bodyH * 0.65, -bodyH, bodyH * 1.3, bodyH, bodyH * 0.2);
+                ctx.fill();
+                ctx.fillStyle = '#ffd700';
+                ctx.fillRect(-bodyH * 0.3, -bodyH, bodyH * 0.6, bodyH * 0.18);
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(-bodyH * 0.6, -bodyH * 0.25, bodyH * 1.2, bodyH * 0.15);
+
+                const basketY = -bodyH - basketH;
+                const basketGrad = ctx.createLinearGradient(0, basketY, 0, basketY + basketH);
+                basketGrad.addColorStop(0, '#d4a050');
+                basketGrad.addColorStop(1, '#a07030');
+                ctx.fillStyle = basketGrad;
+                ctx.beginPath();
+                ctx.moveTo(-basketW / 2, basketY);
+                ctx.quadraticCurveTo(-basketW / 2 - 6, basketY + basketH * 0.5, -basketW / 2 + 4, basketY + basketH);
+                ctx.lineTo(basketW / 2 - 4, basketY + basketH);
+                ctx.quadraticCurveTo(basketW / 2 + 6, basketY + basketH * 0.5, basketW / 2, basketY);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#8B6914';
+                ctx.lineWidth = 1;
+                for (let i = -3; i <= 3; i++) {
+                    const bx = i * basketW / 7;
+                    ctx.beginPath();
+                    ctx.moveTo(bx, basketY + 2);
+                    ctx.quadraticCurveTo(bx, basketY + basketH * 0.5, bx * 0.9, basketY + basketH - 2);
+                    ctx.stroke();
+                }
+
+                ctx.strokeStyle = '#e05070';
+                ctx.lineWidth = 6 * bodyScale;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(-bodyH * 0.5, -bodyH * 0.7);
+                ctx.quadraticCurveTo(-basketW * 0.35, -bodyH * 0.8, -basketW * 0.3, basketY + basketH * 0.4);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(bodyH * 0.5, -bodyH * 0.7);
+                ctx.quadraticCurveTo(basketW * 0.35, -bodyH * 0.8, basketW * 0.3, basketY + basketH * 0.4);
+                ctx.stroke();
+
+                const headY = -bodyH - headR - 4;
+                const skinGrad = ctx.createRadialGradient(-headR * 0.25, headY - headR * 0.25, headR * 0.3, 0, headY, headR);
+                skinGrad.addColorStop(0, '#ffe8d0');
+                skinGrad.addColorStop(1, '#f0c8a0');
+                ctx.fillStyle = skinGrad;
+                ctx.beginPath();
+                ctx.arc(0, headY, headR, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#2a1a0a';
+                ctx.beginPath();
+                ctx.ellipse(-headR * 0.3, headY - headR * 0.1, headR * 0.12, headR * 0.16, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(headR * 0.3, headY - headR * 0.1, headR * 0.12, headR * 0.16, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(-headR * 0.26, headY - headR * 0.16, headR * 0.05, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(headR * 0.34, headY - headR * 0.16, headR * 0.05, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(255,150,150,0.5)';
+                ctx.beginPath();
+                ctx.ellipse(-headR * 0.5, headY + headR * 0.15, headR * 0.2, headR * 0.12, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(headR * 0.5, headY + headR * 0.15, headR * 0.2, headR * 0.12, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#c06060';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.arc(0, headY + headR * 0.1, headR * 0.35, 0.2, Math.PI - 0.2);
+                ctx.stroke();
+                ctx.fillStyle = '#1a1a2e';
+                ctx.beginPath();
+                ctx.arc(0, headY - headR * 0.15, headR * 1.02, Math.PI * 0.85, Math.PI * 2.15);
+                ctx.fill();
+                ctx.fillStyle = '#1a1a2e';
+                ctx.beginPath();
+                ctx.arc(-headR * 0.75, headY - headR * 0.5, headR * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(headR * 0.75, headY - headR * 0.5, headR * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ff2d75';
+                ctx.beginPath();
+                ctx.arc(-headR * 0.75, headY - headR * 0.5, headR * 0.18, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(headR * 0.75, headY - headR * 0.5, headR * 0.18, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            function drawParticles() {
+                for (const p of particles) {
+                    const alpha = Math.max(0, p.life / p.maxLife);
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    if (p.type === 'heart') {
+                        ctx.fillStyle = p.color;
+                        drawHeartShape(p.x, p.y, p.radius, p.color, null, null);
+                    } else {
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.radius * alpha, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                }
+            }
+
+            function drawFloatingTexts() {
+                for (const ft of floatingTexts) {
+                    const alpha = Math.max(0, ft.life / ft.maxLife);
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.font = 'bold ' + ft.size + 'px "PingFang SC", "Microsoft YaHei", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = ft.color;
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                    ctx.shadowBlur = 6;
+                    ctx.fillText(ft.text, ft.x, ft.y);
+                    ctx.restore();
+                }
+            }
+
+            function drawProgressBar() {
+                const barW = cssW * 0.82;
+                const barH = Math.max(14, cssW * 0.04);
+                const barX = (cssW - barW) / 2;
+                const barY = Math.max(8, cssW * 0.04);
+                const progress = Math.min(1, score / WIN_SCORE);
+                const remaining = Math.max(0, WIN_SCORE - score);
+
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.beginPath();
+                ctx.roundRect(barX - 4, barY - 4, barW + 8, barH + 28, 14);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,150,200,0.4)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.roundRect(barX - 4, barY - 4, barW + 8, barH + 28, 14);
+                ctx.stroke();
+
+                const fillGrad = ctx.createLinearGradient(barX, barY, barX + barW, barY);
+                fillGrad.addColorStop(0, '#ff6b9d');
+                fillGrad.addColorStop(0.5, '#ff2d75');
+                fillGrad.addColorStop(1, '#ffd700');
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.beginPath();
+                ctx.roundRect(barX, barY, barW, barH, barH / 2);
+                ctx.fill();
+                ctx.fillStyle = fillGrad;
+                ctx.beginPath();
+                ctx.roundRect(barX, barY, barW * progress, barH, barH / 2);
+                ctx.fill();
+
+                const markX = barX + barW * (WIN_SCORE / (WIN_SCORE * 1.15));
+                ctx.fillStyle = 'rgba(255,215,0,0.8)';
+                ctx.fillRect(markX - 1.5, barY - 3, 3, barH + 6);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold ' + Math.max(13, Math.min(18, cssW * 0.04)) + 'px "PingFang SC", "Microsoft YaHei", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                if (score >= WIN_SCORE) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.fillText('💘 一生一世达成！', cssW / 2, barY + barH + 4);
+                } else {
+                    ctx.fillText('距离一生一世还差 ' + remaining + ' 分', cssW / 2, barY + barH + 4);
+                }
+
+                ctx.textAlign = 'left';
+                ctx.fillStyle = timeLeft <= 5 ? '#ff4444' : '#ffffff';
+                ctx.font = 'bold ' + Math.max(15, Math.min(20, cssW * 0.05)) + 'px "PingFang SC", sans-serif';
+                ctx.fillText('⏱ ' + Math.ceil(timeLeft) + 's', cssW * 0.06, barY + 2);
+
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold ' + Math.max(15, Math.min(20, cssW * 0.05)) + 'px "PingFang SC", sans-serif';
+                ctx.fillText('💖 ' + score, cssW - cssW * 0.06, barY + 2);
+
+                if (combo > 0) {
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = '#ff9ec4';
+                    const comboSize = combo >= COMBO_TIER2 ? 22 : combo >= COMBO_TIER1 ? 18 : 14;
+                    ctx.font = 'bold ' + comboSize + 'px "PingFang SC", sans-serif';
+                    ctx.fillText('🔥 ' + combo + '连击', cssW / 2, barY + 22);
+                    if (comboMultiplier > 1) {
+                        ctx.fillStyle = '#ffd700';
+                        ctx.fillText('x' + comboMultiplier + '倍率!', cssW / 2, barY + 42);
+                    }
+                }
+            }
+
+            function drawMenuOverlay() {
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(0, 0, cssW, cssH);
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const titleSize = Math.max(30, Math.min(52, cssW * 0.1));
+                ctx.font = 'bold ' + titleSize + 'px "PingFang SC", "Microsoft YaHei", sans-serif';
+                ctx.fillStyle = '#ff6b9d';
+                ctx.shadowColor = 'rgba(255,100,150,0.8)';
+                ctx.shadowBlur = 20;
+                ctx.fillText('💘 一生一世', cssW / 2, cssH * 0.28);
+                ctx.shadowBlur = 0;
+                ctx.font = 'bold ' + Math.max(18, Math.min(28, cssW * 0.06)) + 'px "PingFang SC", sans-serif';
+                ctx.fillStyle = '#ffd700';
+                ctx.fillText('1314 接心挑战', cssW / 2, cssH * 0.36);
+
+                ctx.font = Math.max(13, Math.min(16, cssW * 0.038)) + 'px "PingFang SC", sans-serif';
+                ctx.fillStyle = '#dddddd';
+                ctx.fillText('红心 +50 ｜ 灰心 -50 ｜ 金心 +131', cssW / 2, cssH * 0.46);
+                ctx.fillText('40秒内攒够 1314 分即可通关', cssW / 2, cssH * 0.51);
+                ctx.fillText('连续接红心可触发连击倍率', cssW / 2, cssH * 0.56);
+
+                if (highestScore > 0) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = 'bold ' + Math.max(14, Math.min(18, cssW * 0.04)) + 'px "PingFang SC", sans-serif';
+                    ctx.fillText('你离一生一世最近的一次是 ' + highestScore, cssW / 2, cssH * 0.62);
+                }
+
+                ctx.fillStyle = '#aaaaaa';
+                ctx.font = Math.max(12, Math.min(14, cssW * 0.035)) + 'px "PingFang SC", sans-serif';
+                ctx.fillText('🖱 鼠标拖动 / ⌨ 左右键 / 📱 手指拖动', cssW / 2, cssH * 0.7);
+
+                ctx.fillStyle = '#ff6b9d';
+                ctx.font = 'bold ' + Math.max(16, Math.min(20, cssW * 0.045)) + 'px "PingFang SC", sans-serif';
+                const pulse = 0.7 + 0.3 * Math.sin(elapsedTime * 3);
+                ctx.globalAlpha = pulse;
+                ctx.fillText('点击下方按钮开始', cssW / 2, cssH * 0.8);
+                ctx.globalAlpha = 1;
+            }
+
+            function drawWinOverlay() {
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(0, 0, cssW, cssH);
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#ffd700';
+                const winSize = Math.max(36, Math.min(58, cssW * 0.12));
+                ctx.font = 'bold ' + winSize + 'px "PingFang SC", sans-serif';
+                ctx.shadowColor = 'rgba(255,215,0,0.8)';
+                ctx.shadowBlur = 30;
+                ctx.fillText('💘 一生一世 💘', cssW / 2, cssH * 0.3);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold ' + Math.max(22, Math.min(32, cssW * 0.07)) + 'px "PingFang SC", sans-serif';
+                ctx.fillText('通关成功！', cssW / 2, cssH * 0.42);
+                ctx.fillStyle = '#ffd700';
+                ctx.fillText('最终得分：' + score + ' 分', cssW / 2, cssH * 0.52);
+                if (score > highestScore && score > 0) {
+                    ctx.fillStyle = '#ff9ec4';
+                    ctx.font = Math.max(16, Math.min(22, cssW * 0.05)) + 'px "PingFang SC", sans-serif';
+                    ctx.fillText('🎉 新的最高分！', cssW / 2, cssH * 0.6);
+                }
+            }
+
+            function drawLoseOverlay() {
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(0, 0, cssW, cssH);
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#ff6b9d';
+                const loseSize = Math.max(28, Math.min(44, cssW * 0.09));
+                ctx.font = 'bold ' + loseSize + 'px "PingFang SC", sans-serif';
+                ctx.shadowColor = 'rgba(255,100,150,0.6)';
+                ctx.shadowBlur = 20;
+                ctx.fillText('💔 差一点就一生一世了...', cssW / 2, cssH * 0.28);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold ' + Math.max(20, Math.min(30, cssW * 0.065)) + 'px "PingFang SC", sans-serif';
+                ctx.fillText('得分：' + score + ' 分', cssW / 2, cssH * 0.4);
+                ctx.fillStyle = '#ff9ec4';
+                ctx.font = Math.max(16, Math.min(22, cssW * 0.05)) + 'px "PingFang SC", sans-serif';
+                ctx.fillText('目标：1314 分 ｜ 差距：' + Math.max(0, WIN_SCORE - score) + ' 分', cssW / 2, cssH * 0.48);
+                if (highestScore > 0) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = 'bold ' + Math.max(14, Math.min(18, cssW * 0.04)) + 'px "PingFang SC", sans-serif';
+                    ctx.fillText('你离一生一世最近的一次是 ' + highestScore, cssW / 2, cssH * 0.56);
+                }
+                ctx.fillStyle = '#aaaaaa';
+                ctx.font = Math.max(13, Math.min(16, cssW * 0.038)) + 'px "PingFang SC", sans-serif';
+                ctx.fillText('再试一次，这次一定行！', cssW / 2, cssH * 0.64);
+            }
+
+            function drawRedFlashEffect() {
+                if (redFlash > 0) {
+                    ctx.fillStyle = 'rgba(255,0,0,' + (redFlash * 0.3) + ')';
+                    ctx.fillRect(0, 0, cssW, cssH);
+                }
+            }
+
+            function drawMuteButton() {
+                const btnSize = Math.max(30, cssW * 0.09);
+                const btnX = cssW - btnSize - 12;
+                const btnY = cssH - btnSize - 12;
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.beginPath();
+                ctx.arc(btnX + btnSize / 2, btnY + btnSize / 2, btnSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = Math.floor(btnSize * 0.55) + 'px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(isMuted ? '🔇' : '🔊', btnX + btnSize / 2, btnY + btnSize / 2);
+                ctx.restore();
+                return { x: btnX, y: btnY, size: btnSize };
+            }
+
+            function render() {
+                ctx.clearRect(0, 0, cssW, cssH);
+                drawBackground();
+
+                for (const h of hearts) {
+                    drawHeart(h);
+                }
+
+                drawParticles();
+                drawPlayer();
+                drawFloatingTexts();
+
+                if (gameState === STATE.PLAYING || gameState === STATE.WIN || gameState === STATE.LOSE) {
+                    drawProgressBar();
+                }
+                muteBtnArea = drawMuteButton();
+
+                if (gameState === STATE.MENU) {
+                    drawMenuOverlay();
+                } else if (gameState === STATE.WIN) {
+                    drawWinOverlay();
+                } else if (gameState === STATE.LOSE) {
+                    drawLoseOverlay();
+                }
+
+                drawRedFlashEffect();
+            }
+
+            function gameLoop(timestamp) {
+                if (!lastTime) lastTime = timestamp;
+                const dt = Math.min(0.05, (timestamp - lastTime) / 1000);
+                lastTime = timestamp;
+
+                if (gameState === STATE.MENU || gameState === STATE.WIN || gameState === STATE.LOSE) {
+                    elapsedTime += dt;
+                }
+
+                update(dt);
+                render();
+                requestAnimationFrame(gameLoop);
+            }
+
+            const keys = {};
+
+            function handlePointerMove(clientX) {
+                if (gameState === STATE.PLAYING || gameState === STATE.MENU) {
+                    player.targetX = Math.max(30, Math.min(cssW - 30, clientX));
+                }
+            }
+
+            canvas.addEventListener('mousedown', function(e) {
+                initAudio();
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                const rect = canvas.getBoundingClientRect();
+                const mx = e.clientX - rect.left;
+                const my = e.clientY - rect.top;
+                if (muteBtnArea && mx >= muteBtnArea.x && mx <= muteBtnArea.x + muteBtnArea.size &&
+                    my >= muteBtnArea.y && my <= muteBtnArea.y + muteBtnArea.size) {
+                    isMuted = !isMuted;
+                    return;
+                }
+                if (gameState === STATE.PLAYING) {
+                    handlePointerMove(mx);
+                    canvas.addEventListener('mousemove', onMouseMove);
+                }
+            });
+            canvas.addEventListener('mouseup', function() {
+                canvas.removeEventListener('mousemove', onMouseMove);
+            });
+            canvas.addEventListener('mouseleave', function() {
+                canvas.removeEventListener('mousemove', onMouseMove);
+            });
+
+            function onMouseMove(e) {
+                const rect = canvas.getBoundingClientRect();
+                handlePointerMove(e.clientX - rect.left);
+            }
+
+            canvas.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                initAudio();
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const tx = touch.clientX - rect.left;
+                const ty = touch.clientY - rect.top;
+                if (muteBtnArea && tx >= muteBtnArea.x && tx <= muteBtnArea.x + muteBtnArea.size &&
+                    ty >= muteBtnArea.y && ty <= muteBtnArea.y + muteBtnArea.size) {
+                    isMuted = !isMuted;
+                    return;
+                }
+                if (gameState === STATE.PLAYING) {
+                    handlePointerMove(tx);
+                }
+            }, { passive: false });
+            canvas.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                if (gameState === STATE.PLAYING) {
+                    handlePointerMove(touch.clientX - rect.left);
+                }
+            }, { passive: false });
+            canvas.addEventListener('touchend', function(e) {
+                e.preventDefault();
+            }, { passive: false });
+
+            window.addEventListener('keydown', function(e) {
+                keys[e.key] = true;
+                initAudio();
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                }
+            });
+            window.addEventListener('keyup', function(e) {
+                keys[e.key] = false;
+            });
+
+            function requestFullscreen() {
+                const el = document.documentElement;
+                try {
+                    if (el.requestFullscreen) {
+                        el.requestFullscreen().catch(function() {});
+                    } else if (el.webkitRequestFullscreen) {
+                        el.webkitRequestFullscreen();
+                    } else if (el.msRequestFullscreen) {
+                        el.msRequestFullscreen();
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            const btnStart = document.getElementById('btnStart');
+            const btnRestart = document.getElementById('btnRestart');
+
+            btnStart.addEventListener('click', function(e) {
+                initAudio();
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                requestFullscreen();
+                btnStart.classList.add('hidden');
+                resetGame();
+            });
+            btnStart.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                initAudio();
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                requestFullscreen();
+                btnStart.classList.add('hidden');
+                resetGame();
+            });
+
+            btnRestart.addEventListener('click', function(e) {
+                initAudio();
+                resetGame();
+            });
+            btnRestart.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                initAudio();
+                resetGame();
+            });
+
+            resizeCanvas();
+            initPlayer();
+            resetSpawnTimer();
+            lastTime = 0;
+            elapsedTime = 0;
+            gameStartTime = performance.now();
+            window.addEventListener('resize', resizeCanvas);
+            window.addEventListener('orientationchange', function() {
+                setTimeout(resizeCanvas, 200);
+            });
+            requestAnimationFrame(gameLoop);
+
+            window.toggleMute = function() {
+                isMuted = !isMuted;
+            };
+        })();
+    </script>
+</body>
+</html>
