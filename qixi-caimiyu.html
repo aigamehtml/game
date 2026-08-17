@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>七夕星河猜灯谜</title>
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+}
+
+body{
+  min-height:100vh;
+  overflow:hidden;
+  color:#fff;
+  position:relative;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(255,215,112,0.45) 0%, transparent 28%),
+    radial-gradient(circle at 90% 18%, rgba(255,180,80,0.35) 0%, transparent 32%),
+    radial-gradient(circle at 50% 90%, rgba(88,42,120,0.45) 0%, transparent 36%),
+    linear-gradient(180deg,#050314 0%,#0b0828 48%,#120d30 100%);
+}
+
+/* 星空层 */
+#starfield{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  z-index:1;
+  pointer-events:none;
+}
+
+.star{
+  position:absolute;
+  background:#fff;
+  border-radius:50%;
+  animation:twinkle 2.8s infinite ease-in-out;
+}
+
+@keyframes twinkle{
+  0%{opacity:0.15; transform:scale(1);}
+  50%{opacity:1; transform:scale(1.2);}
+  100%{opacity:0.15; transform:scale(1);}
+}
+
+/* 流星 */
+.meteor{
+  position:absolute;
+  width:2px;
+  height:18px;
+  background:linear-gradient(180deg,#fff,rgba(255,255,255,0));
+  border-radius:999px;
+  animation:meteor 3.5s linear infinite;
+  opacity:0;
+}
+
+@keyframes meteor{
+  0%{transform:translateX(0) translateY(-20px); opacity:0;}
+  10%{opacity:1;}
+  100%{transform:translateX(120px) translateY(160px); opacity:0;}
+}
+
+/* 孔明灯 */
+.lantern{
+  position:absolute;
+  width:28px;
+  height:38px;
+  background:radial-gradient(circle at 50% 30%,rgba(255,210,110,0.95),rgba(255,90,50,0.85));
+  border-radius:50% 50% 45% 45%;
+  box-shadow:0 0 18px rgba(255,150,50,0.85);
+  animation:floatLantern 18s linear infinite;
+  opacity:0.75;
+}
+
+.lantern::after{
+  content:"";
+  position:absolute;
+  bottom:-12px;
+  left:50%;
+  width:1px;
+  height:12px;
+  background:rgba(255,210,110,0.65);
+  transform:translateX(-50%);
+}
+
+@keyframes floatLantern{
+  0%{transform:translateY(100vh) rotate(-8deg);}
+  100%{transform:translateY(-60px) rotate(8deg);}
+}
+
+/* 鹊桥装饰 */
+.bridge{
+  position:absolute;
+  bottom:0;
+  left:50%;
+  width:72%;
+  height:180px;
+  transform:translateX(-50%);
+  pointer-events:none;
+  z-index:2;
+}
+
+.bridge-arc{
+  position:absolute;
+  bottom:0;
+  left:50%;
+  width:260px;
+  height:130px;
+  border-radius:130px 130px 0 0;
+  border:3px solid rgba(255,215,112,0.55);
+  border-bottom:none;
+  transform:translateX(-50%);
+  box-shadow:0 0 25px rgba(255,180,80,0.35);
+}
+
+.magpie-line{
+  position:absolute;
+  bottom:42px;
+  left:50%;
+  width:220px;
+  height:2px;
+  background:linear-gradient(90deg,rgba(255,215,112,0),rgba(255,215,112,0.85),rgba(255,215,112,0));
+  transform:translateX(-50%);
+  box-shadow:0 0 12px rgba(255,180,80,0.55);
+}
+
+.magpie{
+  position:absolute;
+  font-size:26px;
+  filter:drop-shadow(0 0 8px rgba(255,215,112,0.65));
+  animation:flyMagpie 12s ease-in-out infinite;
+}
+
+@keyframes flyMagpie{
+  0%{transform:translateX(-10px) translateY(0);}
+  50%{transform:translateX(10px) translateY(-12px);}
+  100%{transform:translateX(-10px) translateY(0);}
+}
+
+/* 主游戏容器 */
+#game{
+  position:relative;
+  z-index:10;
+  width:100%;
+  min-height:100vh;
+  padding:18px 14px 24px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+}
+
+/* 顶部标题 */
+.header{
+  width:100%;
+  max-width:480px;
+  text-align:center;
+  margin-bottom:18px;
+}
+
+.header h1{
+  font-size:26px;
+  font-weight:800;
+  letter-spacing:1px;
+  background:linear-gradient(135deg,#ffd870,#ff9933,#ff6622);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  text-shadow:none;
+  filter:drop-shadow(0 0 12px rgba(255,180,80,0.45));
+}
+
+.subtitle{
+  margin-top:8px;
+  font-size:15px;
+  color:rgba(255,255,255,0.65);
+}
+
+.score-panel{
+  margin-top:14px;
+  display:inline-flex;
+  align-items:center;
+  gap:18px;
+  padding:10px 16px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,215,112,0.25);
+  box-shadow:0 0 18px rgba(255,180,80,0.15);
+}
+
+.score-item{
+  text-align:center;
+}
+
+.score-label{
+  font-size:12px;
+  color:rgba(255,255,255,0.55);
+}
+
+.score-value{
+  font-size:20px;
+  font-weight:bold;
+  color:#ffd870;
+}
+
+/* 倒计时 */
+.timer-box{
+  margin-top:10px;
+  width:100%;
+  max-width:480px;
+  height:8px;
+  background:rgba(255,255,255,0.1);
+  border-radius:999px;
+  overflow:hidden;
+}
+.timer-bar{
+  height:100%;
+  background:linear-gradient(90deg,#ffd870,#ff6622);
+  width:100%;
+  transition:width 1s linear;
+}
+.timer-text{
+  text-align:center;
+  font-size:14px;
+  margin-top:6px;
+  color:#ffd870;
+}
+
+/* 题目卡片 */
+.card{
+  width:100%;
+  max-width:480px;
+  background:
+    linear-gradient(135deg,
+      rgba(255,255,255,0.12) 0%,
+      rgba(255,255,255,0.04) 48%,
+      rgba(255,255,255,0.12) 100%);
+  border:1px solid rgba(255,215,112,0.35);
+  border-radius:24px;
+  padding:22px 18px;
+  backdrop-filter:blur(12px);
+  box-shadow:
+    0 0 35px rgba(255,180,80,0.25),
+    inset 0 0 0 1px rgba(255,255,255,0.02);
+  position:relative;
+  overflow:hidden;
+}
+
+.card::before{
+  content:"";
+  position:absolute;
+  top:-50%;
+  left:-50%;
+  width:200%;
+  height:200%;
+  background:radial-gradient(circle,rgba(255,215,112,0.08),transparent 35%);
+  animation:pulse 6s ease-in-out infinite;
+}
+
+@keyframes pulse{
+  0%{transform:translate(0,0);}
+  50%{transform:translate(10px,10px);}
+  100%{transform:translate(0,0);}
+}
+
+.question{
+  position:relative;
+  z-index:2;
+  font-size:20px;
+  line-height:1.7;
+  text-align:center;
+  color:#fff;
+  min-height:72px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* 选项 */
+.options{
+  position:relative;
+  z-index:2;
+  margin-top:18px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.option{
+  padding:14px 10px;
+  font-size:16px;
+  text-align:center;
+  border-radius:16px;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,215,112,0.25);
+  color:#fff;
+  cursor:pointer;
+  transition:0.22s ease;
+  box-shadow:0 0 12px rgba(255,180,80,0.15);
+}
+
+.option:hover{
+  transform:translateY(-2px);
+  background:rgba(255,215,112,0.18);
+  border-color:rgba(255,215,112,0.45);
+}
+
+.option:active{
+  transform:translateY(0);
+}
+
+.option.correct{
+  background:linear-gradient(135deg,#7fff99,#32cd66);
+  border-color:#7fff99;
+  color:#081c12;
+  box-shadow:0 0 22px rgba(50,205,102,0.55);
+}
+
+.option.wrong{
+  background:linear-gradient(135deg,#ff7777,#ee4444);
+  border-color:#ff7777;
+  color:#fff;
+  box-shadow:0 0 22px rgba(238,68,68,0.55);
+}
+
+.option.disabled{
+  pointer-events:none;
+  opacity:0.65;
+}
+
+/* 提示信息 */
+.tip{
+  position:relative;
+  z-index:2;
+  margin-top:16px;
+  min-height:24px;
+  font-size:15px;
+  text-align:center;
+  color:rgba(255,255,255,0.75);
+}
+
+.tip.correct{
+  color:#7fff99;
+}
+
+.tip.wrong{
+  color:#ff7777;
+}
+
+/* 按钮 */
+.btn{
+  position:relative;
+  z-index:2;
+  margin-top:18px;
+  width:100%;
+  padding:14px;
+  font-size:17px;
+  font-weight:bold;
+  border:none;
+  border-radius:16px;
+  color:#fff;
+  background:linear-gradient(135deg,#ff9933,#ff6622,#ee3344);
+  box-shadow:0 0 18px rgba(255,150,50,0.45);
+  cursor:pointer;
+  transition:0.2s ease;
+}
+
+.btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 0 25px rgba(255,150,50,0.65);
+}
+
+.btn:active{
+  transform:translateY(0);
+}
+
+.btn.secondary{
+  background:linear-gradient(135deg,#6644dd,#4422bb);
+  box-shadow:0 0 18px rgba(102,68,221,0.45);
+}
+
+/* 牛郎织女弹窗 */
+.nv-modal{
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:rgba(0,0,0,0.7);
+  z-index:95;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.nv-box{
+  background:linear-gradient(135deg,rgba(30,14,60,0.95),rgba(18,8,40,0.95));
+  border:1px solid #ffd870;
+  border-radius:24px;
+  padding:28px 22px;
+  max-width:380px;
+  text-align:center;
+  animation:popIn 0.4s ease-out;
+}
+@keyframes popIn{
+  0%{transform:scale(0.7);opacity:0;}
+  100%{transform:scale(1);opacity:1;}
+}
+.nv-emoji{
+  font-size:60px;
+  margin-bottom:12px;
+}
+.nv-text{
+  font-size:17px;
+  line-height:1.6;
+  color:#fff;
+}
+.nv-btn{
+  margin-top:18px;
+  padding:12px 24px;
+  background:linear-gradient(135deg,#ff9933,#ff6622);
+  border:none;
+  border-radius:12px;
+  color:#fff;
+  font-size:16px;
+}
+
+/* 结束弹窗 */
+.modal{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.78);
+  z-index:99;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+}
+
+.modal-box{
+  width:100%;
+  max-width:420px;
+  background:
+    linear-gradient(135deg,
+      rgba(255,255,255,0.16) 0%,
+      rgba(255,255,255,0.06) 100%);
+  border:1px solid rgba(255,215,112,0.35);
+  border-radius:24px;
+  padding:28px 22px;
+  backdrop-filter:blur(12px);
+  box-shadow:0 0 35px rgba(255,180,80,0.35);
+  text-align:center;
+}
+
+.modal-title{
+  font-size:24px;
+  color:#ffd870;
+  margin-bottom:12px;
+}
+
+.modal-desc{
+  font-size:17px;
+  color:rgba(255,255,255,0.85);
+  margin-bottom:18px;
+  line-height:1.6;
+}
+
+.modal-score{
+  font-size:34px;
+  font-weight:bold;
+  color:#ffd870;
+  margin-bottom:18px;
+  text-shadow:0 0 12px rgba(255,180,80,0.85);
+}
+.share-tip{
+  font-size:14px;
+  color:rgba(255,255,255,0.6);
+  margin-bottom:14px;
+}
+
+/* 金粉飘落 */
+.particle{
+  position:absolute;
+  width:6px;
+  height:6px;
+  background:#ffd870;
+  border-radius:50%;
+  box-shadow:0 0 10px rgba(255,180,80,0.85);
+  animation:fall 4s linear forwards;
+  pointer-events:none;
+}
+
+@keyframes fall{
+  0%{transform:translateY(-10px) rotate(0deg); opacity:1;}
+  100%{transform:translateY(100vh) rotate(360deg); opacity:0;}
+}
+
+/* 响应适配 */
+@media (max-width:480px){
+  .header h1{
+    font-size:22px;
+  }
+
+  .question{
+    font-size:18px;
+  }
+
+  .options{
+    grid-template-columns:1fr;
+  }
+
+  .option{
+    font-size:15px;
+    padding:12px 10px;
+  }
+
+  .bridge{
+    width:86%;
+  }
+}
+</style>
+</head>
+<body>
+
+<div id="starfield"></div>
+
+<div class="lantern" style="left:10%;animation-delay:0s;"></div>
+<div class="lantern" style="left:25%;animation-delay:5s;"></div>
+<div class="lantern" style="left:70%;animation-delay:9s;"></div>
+<div class="lantern" style="left:85%;animation-delay:14s;"></div>
+
+<div class="meteor" style="left:20%;animation-delay:0s;"></div>
+<div class="meteor" style="left:50%;animation-delay:6s;"></div>
+<div class="meteor" style="left:80%;animation-delay:12s;"></div>
+
+<div class="bridge">
+  <div class="bridge-arc"></div>
+  <div class="magpie-line"></div>
+  <div class="magpie" style="bottom:52px;left:35%;animation-delay:0s;">🐦</div>
+  <div class="magpie" style="bottom:58px;left:50%;animation-delay:2s;">🐦</div>
+  <div class="magpie" style="bottom:54px;left:65%;animation-delay:4s;">🐦</div>
+</div>
+
+<div id="game">
+  <div class="header">
+    <h1>🌌 七夕星河猜灯谜 🌌</h1>
+    <div class="subtitle">鹊桥相会 · 点灯猜谜</div>
+    <div class="score-panel">
+      <div class="score-item">
+        <div class="score-label">得分</div>
+        <div class="score-value" id="score">0</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">剩余</div>
+        <div class="score-value" id="remain">20</div>
+      </div>
+    </div>
+    <div class="timer-box">
+      <div class="timer-bar" id="timerBar"></div>
+    </div>
+    <div class="timer-text" id="timerText">15s</div>
+  </div>
+
+  <div class="card">
+    <div class="question" id="question">加载题目中...</div>
+    <div class="options" id="options"></div>
+    <div class="tip" id="tip"></div>
+    <button class="btn secondary" id="nextBtn">下一题</button>
+  </div>
+</div>
+
+<!-- 牛郎织女弹窗 -->
+<div class="nv-modal" id="nvModal">
+  <div class="nv-box">
+    <div class="nv-emoji">👩‍❤️‍👨</div>
+    <div class="nv-text" id="nvText">七夕佳节，愿有情人终成眷属✨</div>
+    <button class="nv-btn" id="nvCloseBtn">继续游戏</button>
+  </div>
+</div>
+
+<!-- 结束弹窗 -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="modal-title">🎉 七夕挑战完成</div>
+    <div class="modal-desc">你已完成全部灯谜</div>
+    <div class="modal-score" id="finalScore">0</div>
+    <div class="share-tip">📸 截图分享你的七夕成绩</div>
+    <button class="btn" id="restartBtn">再玩一次</button>
+  </div>
+</div>
+
+<audio id="bgMusic" loop>
+  <source src="https://assets.mixkit.co/sfx/preview/mixkit-soft-ambient-music-loop-1137.mp3" type="audio/mpeg">
+
+<audio id="correctSound">
+  <source src="https://assets.mixkit.co/sfx/preview/mixkit-short-positive-notification-sound-1003.mp3" type="audio/mpeg">
+
+<audio id="wrongSound">
+  <source src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-sound-1024.mp3" type="audio/mpeg">
+
+<audio id="timeOutSound">
+  <source src="https://assets.mixkit.co/sfx/preview/mixkit-clock-tick-countdown-1146.mp3" type="audio/mpeg">
+
+
+<script>
+const qixiQuestions = [
+    {"q":"牛郎织女隔银河（打一成语）","a":"天各一方","opts":["天各一方","朝夕相处","近在咫尺","欢聚一堂"]},
+    {"q":"七夕盼团圆（打一成语）","a":"久别重逢","opts":["久别重逢","一见钟情","岁岁平安","花好月圆"]},
+    {"q":"喜鹊搭桥渡双星（打一成语）","a":"鹊桥相会","opts":["鹊桥相会","牛郎织女","一年一度","有缘相会"]},
+    {"q":"七夕夜，望星河（打一成语）","a":"举目遥望","opts":["举目遥望","低头思乡","星罗棋布","目不转睛"]},
+    {"q":"一年一度鹊桥会（打一成语）","a":"千载难逢","opts":["千载难逢","家常便饭","年年有余","每逢佳节"]},
+    {"q":"织女思牛郎（打一成语）","a":"朝思暮想","opts":["朝思暮想","一见钟情","眉开眼笑","依依不舍"]},
+    {"q":"银河阻隔相思苦（打一成语）","a":"望穿秋水","opts":["望穿秋水","心花怒放","一见钟情","跋山涉水"]},
+    {"q":"七夕乞巧比技艺（打一成语）","a":"巧夺天工","opts":["巧夺天工","心灵手巧","手忙脚乱","绣花枕头"]},
+    {"q":"双星相会在七夕（打一成语）","a":"喜相逢","opts":["喜相逢","伤离别","夜未央","鹊桥仙"]},
+    {"q":"牛郎织女终相见（打一成语）","a":"破镜重圆","opts":["破镜重圆","一见钟情","天各一方","缘定三生"]},
+    {"q":"七夕鹊桥会（打一成语）","a":"相见恨晚","opts":["相见恨晚","一见钟情","久别重逢","一年一度"]},
+    {"q":"牛郎织女（打一成语）","a":"隔河相望","opts":["隔河相望","朝夕相处","同舟共济","比翼双飞"]},
+    {"q":"七夕相会（打一成语）","a":"一年一度","opts":["一年一度","天天相见","有缘千里","鹊桥相会"]},
+    {"q":"牛郎织女盼相逢（打一成语）","a":"望眼欲穿","opts":["望眼欲穿","心花怒放","一见钟情","朝夕相处"]},
+    {"q":"七夕乞巧（打一成语）","a":"心灵手巧","opts":["心灵手巧","笨手笨脚","手到擒来","巧夺天工"]},
+    {"q":"银河两岸相思苦（打一成语）","a":"咫尺天涯","opts":["咫尺天涯","近在眼前","天各一方","隔河相望"]},
+    {"q":"七夕良辰盼相聚（打一成语）","a":"花好月圆","opts":["花好月圆","月黑风高","一年一度","鹊桥相会"]},
+    {"q":"双星隔河遥相望（打一成语）","a":"遥遥相对","opts":["遥遥相对","朝夕相处","同舟共济","情投意合"]},
+    {"q":"七夕相会情意浓（打一成语）","a":"情投意合","opts":["情投意合","貌合神离","天各一方","一见钟情"]},
+    {"q":"银河难阻有情人（打一成语）","a":"殊途同归","opts":["殊途同归","背道而驰","天各一方","有缘无分"]}
+];
+
+const starfield = document.getElementById("starfield");
+const bgMusic = document.getElementById("bgMusic");
+const correctSound = document.getElementById("correctSound");
+const wrongSound = document.getElementById("wrongSound");
+const timeOutSound = document.getElementById("timeOutSound");
+
+// 音效自动播放兼容：点击页面开启音乐
+document.body.addEventListener('click',()=>{
+  if(bgMusic.paused) bgMusic.play().catch(()=>{});
+},{once:true});
+
+function createStars(){
+  for(let i = 0; i < 150; i++){
+    const s = document.createElement("div");
+    s.className = "star";
+    const size = Math.random() * 3 + 1;
+    s.style.width = size + "px";
+    s.style.height = size + "px";
+    s.style.left = Math.random() * 100 + "%";
+    s.style.top = Math.random() * 100 + "%";
+    s.style.animationDelay = Math.random() * 3 + "s";
+    starfield.appendChild(s);
+  }
+}
+createStars();
+
+let score = 0;
+let total = 20;
+let remain = [...qixiQuestions].sort(() => Math.random() - 0.5).slice(0, total);
+let current = null;
+let answered = false;
+let timer = null;
+const TIME_LIMIT = 15;
+let timeLeft = TIME_LIMIT;
+
+const question = document.getElementById("question");
+const options = document.getElementById("options");
+const tip = document.getElementById("tip");
+const scoreDom = document.getElementById("score");
+const remainDom = document.getElementById("remain");
+const nextBtn = document.getElementById("nextBtn");
+const modal = document.getElementById("modal");
+const finalScore = document.getElementById("finalScore");
+const restartBtn = document.getElementById("restartBtn");
+const timerBar = document.getElementById("timerBar");
+const timerText = document.getElementById("timerText");
+const nvModal = document.getElementById("nvModal");
+const nvText = document.getElementById("nvText");
+const nvCloseBtn = document.getElementById("nvCloseBtn");
+
+// 牛郎织女随机文案
+const nvTexts = [
+  "鹊桥相会，岁岁相思，愿世间有情人终成眷属✨",
+  "金风玉露一相逢，便胜却人间无数🌌",
+  "星河漫漫，相思绵长，祝七夕喜乐，万事顺遂",
+  "牛郎织女隔银河，喜鹊搭桥赴佳期，愿你得遇良人"
+];
+
+function showNvModal(){
+  nvText.innerText = nvTexts[Math.floor(Math.random()*nvTexts.length)];
+  nvModal.style.display = "flex";
+}
+
+nvCloseBtn.addEventListener('click',()=>{
+  nvModal.style.display = "none";
+});
+
+function startTimer(){
+  clearInterval(timer);
+  timeLeft = TIME_LIMIT;
+  timerBar.style.width = "100%";
+  timerText.innerText = timeLeft + "s";
+  timer = setInterval(()=>{
+    timeLeft--;
+    timerText.innerText = timeLeft + "s";
+    timerBar.style.width = ((timeLeft / TIME_LIMIT)*100) + "%";
+    if(timeLeft <= 0){
+      clearInterval(timer);
+      if(!answered){
+        answered = true;
+        timeOutSound.play().catch(()=>{});
+        const allOpts = document.querySelectorAll(".option");
+        allOpts.forEach(el=>{
+          el.classList.add("disabled");
+          if(el.innerText === current.a) el.classList.add("correct");
+        });
+        tip.innerText = `⏰时间到！正确答案：${current.a}`;
+        tip.className = "tip wrong";
+      }
+    }
+  },1000);
+}
+
+function loadQuestion(){
+  clearInterval(timer);
+  current = remain.shift();
+  answered = false;
+  question.innerText = current.q;
+  tip.innerText = "";
+  tip.className = "tip";
+  options.innerHTML = "";
+
+  const shuffled = [...current.opts].sort(() => Math.random() - 0.5);
+  shuffled.forEach(opt=>{
+    const btn = document.createElement("div");
+    btn.className = "option";
+    btn.innerText = opt;
+    btn.onclick = ()=> checkAnswer(btn, opt);
+    options.appendChild(btn);
+  });
+
+  scoreDom.innerText = score;
+  remainDom.innerText = remain.length;
+  startTimer();
+
+  // 每5题弹出牛郎织女弹窗
+  if((total - remain.length) %5 === 0 && (total - remain.length) > 0){
+    setTimeout(()=>showNvModal(),600);
+  }
+}
+
+function checkAnswer(btn, userAns){
+  if(answered) return;
+  answered = true;
+  clearInterval(timer);
+
+  const allOpts = document.querySelectorAll(".option");
+  allOpts.forEach(el=>{
+    el.classList.add("disabled");
+    if(el.innerText === current.a){
+      el.classList.add("correct");
+    }
+  });
+
+  if(userAns === current.a){
+    score += 10;
+    tip.innerText = "✅ 答对啦！+10分";
+    tip.className = "tip correct";
+    correctSound.play().catch(()=>{});
+    createParticles();
+  }else{
+    btn.classList.add("wrong");
+    tip.innerText = `❌ 答错了，正确答案是：${current.a}`;
+    tip.className = "tip wrong";
+    wrongSound.play().catch(()=>{});
+  }
+
+  scoreDom.innerText = score;
+}
+
+function createParticles(){
+  for(let i = 0; i < 30; i++){
+    const p = document.createElement("div");
+    p.className = "particle";
+    p.style.left = Math.random() * 100 + "%";
+    p.style.animationDelay = Math.random() * 0.5 + "s";
+    document.body.appendChild(p);
+    setTimeout(()=> p.remove(), 4000);
+  }
+}
+
+function endGame(){
+  finalScore.innerText = score + " 分";
+  modal.style.display = "flex";
+}
+
+function restartGame(){
+  score = 0;
+  remain = [...qixiQuestions].sort(() => Math.random() - 0.5).slice(0, total);
+  modal.style.display = "none";
+  loadQuestion();
+}
+
+nextBtn.addEventListener("click", ()=>{
+  if(remain.length === 0){
+    endGame();
+  }else{
+    loadQuestion();
+  }
+});
+
+restartBtn.addEventListener("click", restartGame);
+
+loadQuestion();
+</script>
+
+</body>
+</html>
